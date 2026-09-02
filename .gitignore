@@ -1,0 +1,26 @@
+# macOS / exFAT noise
+._*
+.DS_Store
+.Spotlight-V100
+.Trashes
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+
+# build output
+build/
+dist/
+*.spec
+
+# large working assets (kept on disk, not in git)
+*.png
+*.jpg
+*.jpeg
+*.tif
+*.tiff
+*.svg
+!presets/*.json
