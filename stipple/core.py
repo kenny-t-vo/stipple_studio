@@ -11,7 +11,9 @@ import numpy as np
 from . import image as I
 from . import render as R
 from . import sample as S
-from .density import Geometry, density_field, geometry_for, target_count
+from . import flow as F
+from .strokes import Strokes, build_strokes
+from .density import Geometry, density_field, geometry_for, spacing_field, target_count
 from .params import Params
 
 Progress = Callable[[str, float], None] | None
@@ -22,6 +24,7 @@ class Result:
     points: np.ndarray                  # (N, 2) canvas points
     darkness: np.ndarray                # (N,)  darkness at each point
     colors: np.ndarray | None           # (N, 3) source colour, if requested
+    strokes: object | None              # Strokes, when line mode is on
     geom: Geometry
     target: int
     elapsed: float
@@ -70,8 +73,27 @@ def build(p: Params, *, max_edge: int | None = None, progress: Progress = None) 
     dark_at = _sample_at(darkness, pts, geom) if len(pts) else np.zeros(0, dtype=np.float32)
     colors = _sample_at(rgb, pts, geom) if (p.color_mode == "source" and len(pts)) else None
 
+    strokes = None
+    if p.line_mode and len(pts):
+        theta, coh = F.build_field(
+            luma,
+            smoothing=p.flow_smoothing,
+            diffusion=p.flow_diffusion,
+            bias_angle_deg=p.flow_bias_angle,
+            bias_strength=p.flow_bias_strength,
+            perpendicular=p.flow_perpendicular,
+        )
+        strokes = build_strokes(
+            pts, dark_at, theta, geom,
+            base_r=p.dot_radius_pt,
+            spacing=spacing_field(dens, 2.0 * p.dot_radius_pt * p.min_sep_factor),
+            length_factor=p.line_length_factor,
+            jitter=p.flow_jitter,
+            seed=p.seed,
+        )
+
     return Result(
-        points=pts, darkness=dark_at, colors=colors, geom=geom,
+        points=pts, darkness=dark_at, colors=colors, strokes=strokes, geom=geom,
         target=target, elapsed=time.time() - t0,
         stats={"source": (src_w, src_h), "sampler": p.sampler},
     )
@@ -80,14 +102,15 @@ def build(p: Params, *, max_edge: int | None = None, progress: Progress = None) 
 def generate(p: Params, *, png_dpi: int | None = None, progress: Progress = None) -> Result:
     """Full-quality run, written to `p.out_path`."""
     res = build(p, progress=progress)
-    svg = R.write_svg(p.out_path, res.geom, res.points, res.darkness, p, colors=res.colors)
+    svg = R.write_svg(p.out_path, res.geom, res.points, res.darkness, p,
+                      colors=res.colors, strokes=res.strokes)
     res.stats.update(svg)
 
     if png_dpi:
         png_path = p.out_path.rsplit(".", 1)[0] + ".proof.png"
         res.stats["png"] = R.render_png(
             png_path, res.geom, res.points, res.darkness, p,
-            dpi=png_dpi, colors=res.colors,
+            dpi=png_dpi, colors=res.colors, strokes=res.strokes,
         )
         res.stats["png_path"] = png_path
 

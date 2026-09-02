@@ -171,12 +171,111 @@ def write_svg(
     return {"bytes": written, "raw_bytes": len(data), "marks": len(pts)}
 
 
-def _write_strokes(buf, strokes, p: Params, colors) -> None:
-    """Placeholder until the flow-field mode lands in phase 2."""
-    raise NotImplementedError("stroke rendering arrives with the flow field")
+def _stroke_geometry(st):
+    """Unit normal to each stroke's chord, for building tapered outlines."""
+    vx = st.p2[:, 0] - st.p0[:, 0]
+    vy = st.p2[:, 1] - st.p0[:, 1]
+    ln = np.maximum(np.hypot(vx, vy), 1e-9)
+    return -vy / ln, vx / ln
+
+
+def _plain_strokes(buf, st, idx) -> None:
+    """Centreline only: one quadratic per stroke, drawn with a round cap."""
+    px = py = 0.0
+    out = []
+    for i in idx:
+        x0, y0 = st.p0[i]
+        cx, cy = st.ctrl[i]
+        x2, y2 = st.p2[i]
+        out.append(f"m{_num(x0 - px)},{_num(y0 - py)}"
+                   f"q{_num(cx - x0)},{_num(cy - y0)} {_num(x2 - x0)},{_num(y2 - y0)}")
+        px, py = x0, y0
+    buf.write("".join(out))
+
+
+def _tapered_strokes(buf, st, idx, nx, ny) -> None:
+    """Filled outline per stroke: two quadratics bulging opposite ways.
+
+    The pair meets at both endpoints, so the shape narrows to a point at each
+    end and is widest in the middle -- the profile a nib leaves. It costs two
+    control points per stroke rather than a polygon walked along the
+    centreline, which at this mark count is the difference between a usable
+    file and an unusable one.
+    """
+    px = py = 0.0
+    out = []
+    for i in idx:
+        x0, y0 = st.p0[i]
+        cx, cy = st.ctrl[i]
+        x2, y2 = st.p2[i]
+        hw = st.width[i]
+        ox, oy = nx[i] * hw, ny[i] * hw
+        out.append(
+            f"m{_num(x0 - px)},{_num(y0 - py)}"
+            f"q{_num(cx + ox - x0)},{_num(cy + oy - y0)} {_num(x2 - x0)},{_num(y2 - y0)}"
+            f"q{_num(cx - ox - x2)},{_num(cy - oy - y2)} {_num(x0 - x2)},{_num(y0 - y2)}z"
+        )
+        px, py = x0, y0
+    buf.write("".join(out))
+
+
+def _write_strokes(buf, st, p: Params, colors) -> None:
+    n = len(st)
+    if n == 0:
+        return
+    order = boustrophedon(st.p0, band_pt=max(4.0 * p.dot_radius_pt, 2.0))
+    nx, ny = _stroke_geometry(st)
+
+    def emit(idx, fill):
+        if p.line_taper:
+            buf.write(f'    <path fill="{fill}" stroke="none" d="')
+            _tapered_strokes(buf, st, idx, nx, ny)
+        else:
+            buf.write(f'    <path fill="none" stroke="{fill}" '
+                      f'stroke-width="{_num(2.0 * p.dot_radius_pt, 3)}" '
+                      f'stroke-linecap="round" d="')
+            _plain_strokes(buf, st, idx)
+        buf.write('"/>\n')
+
+    buf.write('  <g>\n')
+    if p.color_mode == "source" and colors is not None:
+        keys, snapped = quantize_colors(colors[order])
+        for k in np.unique(keys):
+            m = keys == k
+            emit(order[m], _hex(snapped[m][0]))
+    else:
+        emit(order, p.ink)
+    buf.write('  </g>\n')
 
 
 # ── PNG proof ────────────────────────────────────────────────────────
+
+def _bezier(p0, c, p2, n=6):
+    """Flatten a quadratic Bezier to n+1 points."""
+    t = np.linspace(0.0, 1.0, n + 1)[:, None]
+    return (1 - t) ** 2 * p0 + 2 * (1 - t) * t * c + t ** 2 * p2
+
+
+def _draw_strokes(draw, st, p: Params, s: float, colors) -> None:
+    nx, ny = _stroke_geometry(st)
+    use_color = p.color_mode == "source" and colors is not None
+    fill = p.ink
+    for i in range(len(st)):
+        if use_color:
+            fill = _hex(colors[i])
+        p0, c, p2 = st.p0[i], st.ctrl[i], st.p2[i]
+        if p.line_taper:
+            hw = st.width[i]
+            off = np.array([nx[i] * hw, ny[i] * hw])
+            a = _bezier(p0, c + off, p2)
+            b = _bezier(p2, c - off, p0)
+            poly = [tuple(v * s) for v in np.vstack([a, b])]
+            draw.polygon(poly, fill=fill)
+        else:
+            pts = [tuple(v * s) for v in _bezier(p0, c, p2)]
+            draw.line(pts, fill=fill, width=max(1, int(round(2 * p.dot_radius_pt * s))),
+                      joint="curve")
+
 
 def render_png(
     path: str,
@@ -187,6 +286,7 @@ def render_png(
     dpi: int = 150,
     supersample: int = 2,
     colors: np.ndarray | None = None,
+    strokes=None,
 ) -> dict:
     """Rasterise a proof so tone and density can be judged without Illustrator."""
     scale = dpi / PT_PER_INCH
@@ -197,13 +297,20 @@ def render_png(
     img = Image.new("RGB", (w * ss, h * ss), p.paper)
     draw = ImageDraw.Draw(img)
 
+    s = scale * ss
+    if strokes is not None:
+        _draw_strokes(draw, strokes, p, s, colors)
+        if ss > 1:
+            img = img.resize((w, h), _RESAMPLE)
+        img.save(path, dpi=(dpi, dpi))
+        return {"width": w, "height": h, "dpi": dpi}
+
     radii = np.full(len(pts), p.dot_radius_pt, dtype=np.float64)
     if p.scale_with_darkness:
         radii = p.dot_radius_pt * (1.0 + (p.max_radius_scale - 1.0) * dark)
 
     use_color = p.color_mode == "source" and colors is not None
     fill = p.ink
-    s = scale * ss
     for i, ((x, y), r) in enumerate(zip(pts, radii)):
         cx, cy, rr = x * s, y * s, max(r * s, 0.35)
         if use_color:

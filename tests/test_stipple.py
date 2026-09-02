@@ -321,3 +321,180 @@ def test_cli_batch(gradient, tmp_path):
 def test_cli_rejects_bad_sampler(gradient, tmp_path):
     assert _cli("render", gradient, str(tmp_path / "x.svg"),
                 "--sampler", "bogus").returncode != 0
+
+
+# ── flow field ───────────────────────────────────────────────────────
+
+from stipple.flow import build_field, structure_tensor, tangent_and_coherence  # noqa: E402
+from stipple.strokes import build_strokes  # noqa: E402
+from stipple.density import Geometry  # noqa: E402
+
+
+def _edge(angle_deg, n=80):
+    """A step edge through the centre whose tangent is at `angle_deg`.
+
+    The boundary runs along (cos a, sin a), so its normal is (-sin a, cos a)
+    and the tangent the structure tensor recovers should be `angle_deg`.
+    """
+    yy, xx = np.mgrid[0:n, 0:n].astype(np.float32)
+    a = np.deg2rad(angle_deg)
+    d = (xx - n / 2) * (-np.sin(a)) + (yy - n / 2) * np.cos(a)
+    return (d > 0).astype(np.float32)
+
+
+def _stripes(angle_deg, n=80, period=8):
+    """Repeating bands with tangent at `angle_deg`."""
+    yy, xx = np.mgrid[0:n, 0:n].astype(np.float32)
+    a = np.deg2rad(angle_deg)
+    d = xx * (-np.sin(a)) + yy * np.cos(a)
+    return ((d % period) < period / 2).astype(np.float32)
+
+
+@pytest.mark.parametrize("deg", [0, 30, 60, 90, 135])
+def test_tangent_runs_along_the_edge_not_across_it(deg):
+    th, coh = build_field(_edge(deg), smoothing=3.0, diffusion=0, bias_strength=0.0)
+    inner = th[30:50, 30:50]
+    got = np.rad2deg(np.arctan2(np.sin(2 * inner).mean(), np.cos(2 * inner).mean()) / 2) % 180
+    assert min(abs(got - deg), 180 - abs(got - deg)) < 8
+
+
+def test_coherence_high_on_structure_low_on_flat():
+    _, coh_edge = build_field(_edge(45), smoothing=3.0, diffusion=0, bias_strength=0.0)
+    _, coh_flat = build_field(np.full((60, 60), 0.5, np.float32),
+                              smoothing=3.0, diffusion=0, bias_strength=0.0)
+    assert coh_edge[30:50, 30:50].mean() > 0.8
+    assert coh_flat.mean() < 0.05
+
+
+def test_flat_regions_fall_back_to_the_bias_angle():
+    flat = np.full((60, 60), 0.5, np.float32)
+    th, _ = build_field(flat, smoothing=3.0, diffusion=2,
+                        bias_angle_deg=30.0, bias_strength=1.0)
+    assert abs((np.rad2deg(th.mean()) % 180) - 30.0) < 1.0
+
+
+def test_diffusion_carries_direction_into_a_blank_region():
+    """Half structured, half featureless: the blank half must inherit.
+
+    A flat neighbourhood gives arctan2(0, 0), a constant -- so the blank half
+    already looks perfectly self-consistent without any diffusion. The test
+    that means something is whether it agrees with the structured half.
+    """
+    ANGLE = 30.0
+    a = np.full((80, 80), 0.5, np.float32)
+    a[:, :35] = _stripes(ANGLE, 80)[:, :35]
+
+    blank = (slice(20, 60), slice(58, 76))
+
+    def error_vs_source(field):
+        s = field[blank]
+        got = np.rad2deg(np.arctan2(np.sin(2 * s).mean(),
+                                    np.cos(2 * s).mean()) / 2) % 180
+        return min(abs(got - ANGLE), 180 - abs(got - ANGLE))
+
+    no_diff, _ = build_field(a, smoothing=3.0, diffusion=0, bias_strength=0.0)
+    diff, _ = build_field(a, smoothing=3.0, diffusion=10, bias_strength=0.0)
+
+    assert error_vs_source(no_diff) > 30.0, "blank half should start off wrong"
+    assert error_vs_source(diff) < error_vs_source(no_diff) / 2
+
+
+def test_perpendicular_rotates_by_ninety_degrees():
+    a = _edge(0)
+    th1, _ = build_field(a, smoothing=3.0, diffusion=0, bias_strength=0.0)
+    th2, _ = build_field(a, smoothing=3.0, diffusion=0, bias_strength=0.0,
+                         perpendicular=True)
+    d = np.rad2deg(np.abs(th2 - th1)).mean() % 180
+    assert abs(d - 90) < 1e-3
+
+
+# ── strokes ──────────────────────────────────────────────────────────
+
+def _flat_field(angle_deg, n=100):
+    return np.full((n, n), np.deg2rad(angle_deg), np.float32)
+
+
+def test_strokes_follow_the_field():
+    g = Geometry(200, 200, 0, 0, 200, 200)
+    pts = np.array([[100.0, 100.0], [60.0, 40.0]])
+    st = build_strokes(pts, np.ones(2), _flat_field(30), g,
+                       base_r=1.0, spacing=np.full((100, 100), 4.0, np.float32),
+                       length_factor=4.0, jitter=0.0, seed=1)
+    v = st.p2 - st.p0
+    ang = np.rad2deg(np.arctan2(v[:, 1], v[:, 0])) % 180
+    assert np.allclose(ang, 30.0, atol=2.0)
+
+
+def test_stroke_length_scales_with_darkness():
+    g = Geometry(200, 200, 0, 0, 200, 200)
+    pts = np.array([[100.0, 100.0], [100.0, 100.0]])
+    st = build_strokes(pts, np.array([1.0, 0.25]), _flat_field(0), g,
+                       base_r=1.0, spacing=np.full((100, 100), 4.0, np.float32),
+                       length_factor=4.0, jitter=0.0, seed=7)
+    ln = np.hypot(*(st.p2 - st.p0).T)
+    assert ln[0] > ln[1] * 2.0
+
+
+def test_zero_darkness_gives_a_degenerate_stroke():
+    g = Geometry(200, 200, 0, 0, 200, 200)
+    st = build_strokes(np.array([[50.0, 50.0]]), np.zeros(1), _flat_field(0), g,
+                       base_r=1.0, spacing=np.full((100, 100), 4.0, np.float32),
+                       length_factor=4.0, jitter=0.0, seed=1)
+    assert float(np.hypot(*(st.p2 - st.p0)[0])) < 1e-6
+
+
+def test_seed_point_is_the_curve_midpoint():
+    """Strokes grow outward from the seed, so blue-noise spacing still governs."""
+    g = Geometry(200, 200, 0, 0, 200, 200)
+    pts = np.array([[100.0, 100.0], [70.0, 130.0]])
+    st = build_strokes(pts, np.ones(2), _flat_field(45), g,
+                       base_r=1.0, spacing=np.full((100, 100), 4.0, np.float32),
+                       length_factor=4.0, jitter=0.0, seed=3)
+    assert np.allclose((st.p0 + 2 * st.ctrl + st.p2) / 4, pts)
+
+
+def test_strokes_are_deterministic(base):
+    base.line_mode = True
+    a, b = build(base).strokes, build(base).strokes
+    assert np.array_equal(a.p0, b.p0) and np.array_equal(a.p2, b.p2)
+
+
+# ── stroke output ────────────────────────────────────────────────────
+
+def test_line_mode_svg_is_wellformed(base):
+    base.line_mode = True
+    generate(base)
+    root = ET.parse(base.out_path).getroot()
+    ns = "{http://www.w3.org/2000/svg}"
+    paths = root.find(f"{ns}g").findall(f"{ns}path")
+    assert len(paths) >= 1
+    assert all("q" in p.get("d", "") for p in paths)
+
+
+def test_taper_fills_and_plain_strokes(base):
+    ns = "{http://www.w3.org/2000/svg}"
+    base.line_mode = True
+
+    base.line_taper = True
+    generate(base)
+    p = ET.parse(base.out_path).getroot().find(f"{ns}g").find(f"{ns}path")
+    assert p.get("fill") == "#000000" and p.get("stroke") == "none"
+
+    base.line_taper = False
+    generate(base)
+    p = ET.parse(base.out_path).getroot().find(f"{ns}g").find(f"{ns}path")
+    assert p.get("fill") == "none" and p.get("stroke-linecap") == "round"
+
+
+def test_line_mode_png_proof(base, tmp_path):
+    base.line_mode = True
+    r = generate(base, png_dpi=72)
+    assert Path(r.stats["png_path"]).exists()
+
+
+def test_cli_line_mode(gradient, tmp_path):
+    out = tmp_path / "lines.svg"
+    r = _cli("render", gradient, str(out), "--line-mode", "--width-in", "3",
+             "--max-density", "0.03")
+    assert r.returncode == 0, r.stderr
+    assert out.exists()

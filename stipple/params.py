@@ -55,10 +55,10 @@ class Params:
 
     # ── line / flow mode ─────────────────────────────────────────────
     line_mode: bool = False
-    line_length_factor: float = 3.0
+    line_length_factor: float = 6.0   # stroke length in multiples of local spacing
     line_taper: bool = True
     flow_smoothing: float = 4.0      # structure-tensor gaussian sigma (px)
-    flow_diffusion: int = 4          # coherence-weighted diffusion passes
+    flow_diffusion: int = 6          # coherence-weighted diffusion passes
     flow_bias_angle: float = 90.0    # degrees; 90 = "grows upward"
     flow_bias_strength: float = 0.5  # blend toward bias where incoherent
     flow_perpendicular: bool = False # rotate field 90 degrees

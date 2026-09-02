@@ -50,6 +50,22 @@ def _add_params(ap: argparse.ArgumentParser) -> None:
                    default=d.scale_with_darkness)
     g.add_argument("--max-radius-scale", type=float, default=d.max_radius_scale)
 
+    g = ap.add_argument_group("lines and flow field")
+    g.add_argument("--line-mode", action=argparse.BooleanOptionalAction, default=d.line_mode,
+                   help="short flow-following strokes instead of dots")
+    g.add_argument("--line-length-factor", type=float, default=d.line_length_factor,
+                   help="stroke length in multiples of local spacing")
+    g.add_argument("--line-taper", action=argparse.BooleanOptionalAction,
+                   default=d.line_taper,
+                   help="taper stroke ends (off gives plottable centrelines)")
+    g.add_argument("--flow-smoothing", type=float, default=d.flow_smoothing)
+    g.add_argument("--flow-diffusion", type=int, default=d.flow_diffusion)
+    g.add_argument("--flow-bias-angle", type=float, default=d.flow_bias_angle)
+    g.add_argument("--flow-bias-strength", type=float, default=d.flow_bias_strength)
+    g.add_argument("--flow-perpendicular", action=argparse.BooleanOptionalAction,
+                   default=d.flow_perpendicular)
+    g.add_argument("--flow-jitter", type=float, default=d.flow_jitter)
+
     g = ap.add_argument_group("colour and output")
     g.add_argument("--color-mode", choices=COLOR_MODES, default=d.color_mode)
     g.add_argument("--ink", default=d.ink)
