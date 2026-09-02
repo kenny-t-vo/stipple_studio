@@ -122,3 +122,7 @@ stipple/     image · density · sample · flow · strokes · render · params �
 web/         server · engine · index.html · app.css · app.js
 presets/     tests/
 ```
+
+## Licence
+
+MIT. See `LICENSE`.
