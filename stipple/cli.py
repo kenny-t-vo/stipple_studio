@@ -73,8 +73,8 @@ def _add_params(ap: argparse.ArgumentParser) -> None:
     g.add_argument("--svg-structure", choices=SVG_STRUCTURES, default=d.svg_structure)
     g.add_argument("--paper-background", action=argparse.BooleanOptionalAction,
                    default=d.paper_background)
-    g.add_argument("--png-dpi", type=int, default=None,
-                   help="also write a raster proof at this DPI")
+    g.add_argument("--png-dpi", type=int, default=d.png_dpi,
+                   help="also write a raster proof at this DPI (0 disables)")
 
 
 def _params_from(args, **over) -> Params:
@@ -106,7 +106,7 @@ def _report(p: Params, res) -> None:
 
 def cmd_render(args) -> int:
     p = _params_from(args, in_path=args.input, out_path=args.output)
-    res = generate(p, png_dpi=args.png_dpi)
+    res = generate(p, png_dpi=p.png_dpi or None)
     _report(p, res)
     return 0
 
@@ -132,7 +132,7 @@ def cmd_batch(args) -> int:
         print(f"[{i}/{len(images)}] {f.name}")
         try:
             p = _params_from(args, in_path=str(f), out_path=str(out))
-            _report(p, generate(p, png_dpi=args.png_dpi))
+            _report(p, generate(p, png_dpi=p.png_dpi or None))
         except Exception as exc:
             failed += 1
             print(f"  failed: {exc}", file=sys.stderr)
@@ -179,7 +179,7 @@ def main(argv=None) -> int:
     s.add_argument("action", choices=("save", "show"))
     s.add_argument("path")
     _add_params(s)
-    s.set_defaults(func=cmd_preset, png_dpi=None)
+    s.set_defaults(func=cmd_preset)
 
     args = ap.parse_args(argv)
     try:

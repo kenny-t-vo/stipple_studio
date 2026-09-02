@@ -1,0 +1,21 @@
+#!/bin/bash
+# Launcher for the local Stipple install.
+VENV="/Users/kenny/.local/share/stipple/venv"
+ROOT="/Volumes/mirai/00ARCHITECTURE/Resources/Stipple_svg"
+
+fail() {
+  /usr/bin/osascript -e "display alert \"Stipple\" message \"$1\" as critical"
+  exit 1
+}
+
+# The project lives on an external volume; say so plainly rather than
+# failing with a stack trace when it is unplugged.
+[ -d "$ROOT" ] || fail "Cannot find the project folder:
+$ROOT
+
+If it lives on an external drive, plug the drive in and try again."
+
+[ -x "$VENV/bin/python" ] || fail "The Python environment is missing.
+Run bootstrap.sh in the project folder to create it."
+
+exec "$VENV/bin/python" "$ROOT/web/server.py"

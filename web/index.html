@@ -1,0 +1,53 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>stipple</title>
+<link rel="stylesheet" href="/app.css">
+
+<div class="shell">
+
+  <section class="pane">
+    <div class="pane__head">
+      <h1>stipple.<span class="v" id="ver"></span></h1>
+    </div>
+
+    <div class="pane__body" id="controls"></div>
+
+    <div class="pane__foot">
+      <button class="btn btn--strong" id="export">export</button>
+      <div class="btnrow">
+        <button class="btn" id="preset-save">save preset</button>
+        <button class="btn" id="preset-load">load preset</button>
+        <button class="btn" id="reset">reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="stage">
+    <div class="stage__head">
+      <span class="lbl">preview</span>
+      <span class="status" id="status">no image</span>
+    </div>
+
+    <div class="stage__body">
+      <div class="view" id="view">
+        <canvas id="cv" width="10" height="10"></canvas>
+        <div class="marquee" id="marquee" hidden></div>
+      </div>
+
+      <div class="view view--detail">
+        <span class="lbl">detail, actual size</span>
+        <canvas id="cvd" width="10" height="10"></canvas>
+        <dl class="kv" id="detail-meta"></dl>
+      </div>
+    </div>
+
+    <div class="stage__foot">
+      <div class="stats" id="stats"></div>
+      <span class="lbl" id="hint">click the preview to move the detail window</span>
+    </div>
+  </section>
+
+</div>
+
+<script src="/app.js"></script>

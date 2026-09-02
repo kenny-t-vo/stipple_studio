@@ -72,6 +72,7 @@ class Params:
     # ── output ───────────────────────────────────────────────────────
     svg_structure: str = "compound"
     paper_background: bool = False   # emit a background rect
+    png_dpi: int = 0                 # also write a raster proof; 0 disables
 
     # ─────────────────────────────────────────────────────────────────
 
@@ -98,6 +99,8 @@ class Params:
             raise ValueError("contrast must be between -1 and 1")
         if self.relax_iterations < 0:
             raise ValueError("relax_iterations must be >= 0")
+        if self.png_dpi and not 1 <= self.png_dpi <= 1200:
+            raise ValueError("png_dpi must be 0, or between 1 and 1200")
 
     @property
     def canvas_w_pt(self) -> float:

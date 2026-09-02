@@ -107,6 +107,19 @@ def test_unlocked_aspect_fits_and_centres():
     assert g.has_margins
 
 
+def test_crop_canvas_ignores_a_stale_height_when_aspect_is_locked(base):
+    """A locked aspect derives height from the source, so canvas_h_in may hold
+    anything. Cropping must scale the resolved canvas, not that stale field,
+    or the crop lands on a canvas of the wrong shape."""
+    base.lock_aspect = True
+    base.canvas_h_in = 999.0                 # never read while locked
+    full = build(base).geom
+    part = build(base, crop=(0.25, 0.25, 0.75, 0.75)).geom
+    assert part.canvas_w_in == pytest.approx(full.canvas_w_in * 0.5, rel=.02)
+    assert part.canvas_h_in == pytest.approx(full.canvas_h_in * 0.5, rel=.02)
+    assert not part.has_margins
+
+
 def test_spacing_grades_with_density():
     dens = np.array([[0.01, 0.25]], dtype=np.float32)
     sp = spacing_field(dens, floor=0.1)
@@ -178,6 +191,18 @@ def test_relaxation_does_not_leak_into_blank_regions(base):
     assert float((dens[iy, ix] <= 0).mean()) < 0.01
 
 
+@pytest.mark.parametrize("sampler", ["relaxed", "poisson"])
+@pytest.mark.parametrize("max_density", [0.02, 0.08, 0.25])
+def test_mark_count_reaches_its_target(base, sampler, max_density):
+    """Dart throwing stops when it runs out of passes, not when the plane is
+    full, and it stopped consistently at ~97.6% of target -- a systematic
+    2.4% lightening of every tone. Any shortfall is now made up."""
+    base.sampler = sampler
+    base.max_density = max_density
+    r = build(base)
+    assert r.count == r.target
+
+
 def test_density_tracks_tone(base):
     """A left-to-right gradient must produce a left-to-right dot gradient."""
     base.threshold = 0.0
@@ -238,6 +263,27 @@ def test_source_colour_groups_into_paths(base, tmp_path):
     paths = root.find(f"{ns}g").findall(f"{ns}path")
     assert 1 <= len(paths) <= 216
     assert all(p.get("fill", "").startswith("#") for p in paths)
+
+
+def test_source_colour_is_sampled_from_the_image(tmp_path):
+    """Dots must take the colour under them, not an average or a guess."""
+    a = np.zeros((200, 200, 3), np.uint8)
+    a[:100, :100] = (200, 40, 40)
+    a[:100, 100:] = (40, 160, 40)
+    a[100:, :100] = (40, 40, 200)
+    a[100:, 100:] = (190, 170, 30)
+    src = tmp_path / "quad.png"
+    Image.fromarray(a, "RGB").save(src)
+
+    p = Params(in_path=str(src), out_path=str(tmp_path / "q.svg"), canvas_w_in=6,
+               max_density=0.06, color_mode="source", gamma=1.0, relax_iterations=4)
+    r = build(p)
+    g = r.geom
+    for i, want in enumerate([(200, 40, 40), (40, 160, 40), (40, 40, 200), (190, 170, 30)]):
+        qx = r.points[:, 0] < g.canvas_w_pt / 2 if i % 2 == 0 else r.points[:, 0] >= g.canvas_w_pt / 2
+        qy = r.points[:, 1] < g.canvas_h_pt / 2 if i < 2 else r.points[:, 1] >= g.canvas_h_pt / 2
+        got = (r.colors[qx & qy].mean(axis=0) * 255).round()
+        assert np.allclose(got, want, atol=12), f"quadrant {i}: {got} != {want}"
 
 
 def test_png_proof_written(base, tmp_path):

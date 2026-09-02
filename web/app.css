@@ -1,0 +1,201 @@
+/* stipple — elevated early web.
+   Materials: white ground, Times for language, mono for quantity, hairlines
+   for every separation. No shadows, gradients, or radii except on images. */
+
+:root{
+  --bg:#fff;
+  --fg:#111;
+  --dim:#6f6f6f;
+  --faint:#9a9a9a;
+  --rule:#dcdcdc;
+  --rule2:#111;
+  --wash:#f2f2f7;
+  --blue:#0000ee;      /* current / interactive */
+  --purple:#551a8b;    /* already done */
+
+  --serif:"Times New Roman",Times,"Liberation Serif",
+          "Hiragino Mincho ProN","Yu Mincho",serif;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+
+  --t1:30px;    /* the single large element */
+  --t2:18px;    /* panel headings */
+  --t3:14px;    /* prose, primary links */
+  --t4:12.5px;  /* list items, secondary copy */
+  --t5:11px;    /* numeric data */
+  --t6:10.5px;  /* labels, key hints */
+
+  --pane:352px;
+  --gut:22px;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{
+  background:var(--bg);color:var(--fg);
+  font:var(--t3)/1.45 var(--serif);
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  overflow:hidden;
+}
+::selection{background:var(--blue);color:#fff}
+
+.lbl{font:var(--t6)/1 var(--serif);letter-spacing:.09em;color:var(--faint)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* ── shell ─────────────────────────────────────────────────────────── */
+
+.shell{display:grid;grid-template-columns:var(--pane) 1fr;height:100vh}
+
+.pane{
+  border-right:1px solid var(--rule2);
+  display:flex;flex-direction:column;min-height:0;
+}
+.pane__head{padding:var(--gut) var(--gut) 13px;border-bottom:1px solid var(--rule2)}
+.pane__body{overflow-y:auto;overflow-x:hidden;flex:1;padding:0 var(--gut) 40px}
+.pane__foot{border-top:1px solid var(--rule2);padding:13px var(--gut)}
+
+h1{
+  font:var(--t1)/1.06 var(--serif);font-weight:400;letter-spacing:-.012em;
+  margin-top:-.201em;                    /* seat cap height, not the box */
+}
+h1 .v{font:var(--t6)/1 var(--mono);color:var(--faint);letter-spacing:0;
+  vertical-align:.62em;margin-left:7px}
+
+/* ── sections ──────────────────────────────────────────────────────── */
+
+.sec{border-top:1px solid var(--rule2);padding:15px 0 19px}
+.sec:first-child{border-top:0}
+.sec__h{
+  font:var(--t2)/1.06 var(--serif);font-weight:400;
+  margin:0 0 11px;
+}
+.sec--off .sec__body{display:none}
+.sec__h .tog{
+  float:right;font:var(--t6)/1 var(--serif);letter-spacing:.09em;
+  color:var(--blue);cursor:pointer;text-decoration:underline;
+  text-underline-offset:2px;vertical-align:.34em;
+}
+.sec__h .tog:hover{color:var(--purple)}
+
+/* ── rows: label left against the rule, value right against it ─────── */
+
+.row{
+  display:grid;grid-template-columns:1fr auto;align-items:baseline;
+  gap:9px;padding:5px 0 2px;
+}
+.row__l{font-size:var(--t4);color:var(--dim)}
+.row__v{font:var(--t5)/1.5 var(--mono);font-variant-numeric:tabular-nums;
+  text-align:right;color:var(--fg)}
+.row--full{grid-template-columns:1fr}
+
+input[type=range]{
+  grid-column:1/-1;width:100%;height:15px;margin:1px 0 3px;
+  -webkit-appearance:none;appearance:none;background:transparent;display:block;
+}
+input[type=range]::-webkit-slider-runnable-track{
+  height:1px;background:var(--rule);border:0}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:7px;height:11px;background:var(--fg);
+  border:0;margin-top:-5px}
+input[type=range]:focus{outline:0}
+input[type=range]:focus::-webkit-slider-thumb{background:var(--blue)}
+
+input[type=text],input[type=number],select{
+  font:var(--t4)/1.4 var(--serif);color:var(--fg);background:var(--bg);
+  border:0;border-bottom:1px solid var(--rule);padding:2px 0;width:100%;
+}
+input[type=text]:focus,input[type=number]:focus,select:focus{
+  outline:0;border-bottom-color:var(--blue)}
+input.mono{font-family:var(--mono);font-size:var(--t5)}
+input[type=color]{
+  -webkit-appearance:none;appearance:none;border:1px solid var(--rule);
+  width:26px;height:15px;padding:0;background:none;cursor:pointer}
+input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+input[type=color]::-webkit-color-swatch{border:0}
+
+/* ── the one accent move: invert the chosen cell ───────────────────── */
+
+.cells{display:flex;gap:0;margin:3px 0 2px}
+.cells button{
+  flex:1;font:var(--t6)/1 var(--serif);letter-spacing:.09em;
+  background:var(--bg);color:var(--fg);border:1px solid var(--rule);
+  border-right:0;padding:5px 0;cursor:pointer;
+}
+.cells button:last-child{border-right:1px solid var(--rule)}
+.cells button[aria-pressed=true]{
+  background:var(--blue);color:#fff;border-color:var(--blue)}
+
+.check{display:flex;align-items:baseline;gap:7px;padding:4px 0 2px;cursor:pointer;
+  position:relative}
+/* Visually hidden, but still focusable. It must be positioned INSIDE .check:
+   an absolutely positioned input with no positioned ancestor resolves against
+   the initial containing block, and focusing it makes the browser scroll the
+   document to wherever that lands -- which threw the whole layout off screen. */
+.check input{position:absolute;left:0;top:0;width:1px;height:1px;
+  opacity:0;pointer-events:none;margin:0}
+.check .box{
+  width:9px;height:9px;border:1px solid var(--fg);flex:none;
+  position:relative;top:1px}
+.check input:checked + .box{background:var(--blue);border-color:var(--blue)}
+.check input:focus-visible + .box{outline:1px solid var(--blue);outline-offset:2px}
+.check .t{font-size:var(--t4);color:var(--dim)}
+.check input:checked ~ .t{color:var(--fg)}
+
+/* ── histogram ─────────────────────────────────────────────────────── */
+
+.hist{display:block;width:100%;height:38px;border-bottom:1px solid var(--rule);
+  margin:2px 0 6px}
+
+/* ── buttons ───────────────────────────────────────────────────────── */
+
+.btn{
+  font:var(--t4)/1 var(--serif);color:var(--blue);background:none;border:0;
+  padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.btn:hover{color:var(--purple)}
+.btn:disabled{color:var(--faint);cursor:default;text-decoration:none}
+.btn--strong{
+  border:1px solid var(--rule2);color:var(--fg);text-decoration:none;
+  padding:7px 0;width:100%;font-size:var(--t3)}
+.btn--strong:hover{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn--strong:disabled{border-color:var(--rule);color:var(--faint);background:none}
+
+.btnrow{display:flex;gap:14px;align-items:baseline;margin-top:8px}
+
+/* ── stage ─────────────────────────────────────────────────────────── */
+
+.stage{display:flex;flex-direction:column;min-width:0;min-height:0}
+.stage__head{
+  display:flex;justify-content:space-between;align-items:baseline;
+  padding:var(--gut) var(--gut) 11px;border-bottom:1px solid var(--rule2)}
+.stage__body{flex:1;display:grid;grid-template-columns:1fr 268px;min-height:0}
+.view{
+  position:relative;min-width:0;min-height:0;
+  display:flex;align-items:center;justify-content:center;padding:var(--gut)}
+.view canvas{max-width:100%;max-height:100%;display:block;cursor:crosshair}
+.view--detail{
+  border-left:1px solid var(--rule);flex-direction:column;
+  align-items:stretch;justify-content:flex-start;gap:9px}
+.view--detail canvas{width:100%;height:auto;border:1px solid var(--rule)}
+
+.marquee{position:absolute;border:1px solid var(--blue);pointer-events:none}
+
+.stage__foot{
+  border-top:1px solid var(--rule2);padding:11px var(--gut);
+  display:flex;justify-content:space-between;align-items:baseline;gap:var(--gut)}
+
+.stats{display:flex;gap:20px;align-items:baseline}
+.stat{display:flex;gap:6px;align-items:baseline}
+.stat b{font:var(--t5)/1 var(--mono);font-weight:400;font-variant-numeric:tabular-nums}
+
+.status{font-size:var(--t4);color:var(--dim)}
+.status[data-busy=true]{color:var(--blue)}
+.status[data-err=true]{color:var(--purple)}
+
+.empty{font-size:var(--t4);color:var(--faint);text-align:center}
+
+/* key/value block: labels flush left against the rule, values flush right.
+   Both edges are promises. */
+.kv{display:grid;grid-template-columns:1fr auto;gap:0 11px;
+  font-size:var(--t4);line-height:1.62;margin-top:2px}
+.kv dt{color:var(--dim)}
+.kv dd{font:var(--t5)/1.62 var(--mono);font-variant-numeric:tabular-nums;
+  text-align:right}
