@@ -1,15 +1,10 @@
 """Direction field derived from image structure.
 
-Strokes need to know which way to run. The original script answered that
-with layered sinusoids, which produce a pretty field that has nothing to do
-with the picture. This derives the direction from the image itself.
-
-The machinery is the structure tensor. Its minor eigenvector points along
-local image structure -- the direction in which the image changes least --
-which is the direction a pen stroke would follow if it were describing the
-form. Its eigenvalue gap says how directional the neighbourhood actually is,
-which matters because large parts of any photograph (sky, smooth walls) have
-no direction at all and would otherwise produce noise.
+Stroke direction comes from a structure tensor. Its minor eigenvector points
+along local image structure -- the direction in which the image changes
+least. Its eigenvalue gap gives how directional the neighbourhood is, which
+matters because large flat areas (sky, smooth walls) have no direction and
+would otherwise produce noise.
 """
 
 from __future__ import annotations
@@ -21,9 +16,9 @@ from scipy.ndimage import gaussian_filter, sobel
 def structure_tensor(luma: np.ndarray, sigma: float):
     """Return smoothed tensor components (Jxx, Jxy, Jyy).
 
-    Smoothing the tensor rather than the gradients is what makes the field
-    coherent: gradient vectors of opposite sign cancel when averaged, whereas
-    the outer products do not.
+    Smoothing the tensor rather than the gradients keeps the field coherent:
+    gradient vectors of opposite sign cancel when averaged, the outer products
+    do not.
     """
     gx = sobel(luma, axis=1, mode="nearest")
     gy = sobel(luma, axis=0, mode="nearest")
@@ -56,20 +51,17 @@ def tangent_and_coherence(jxx, jxy, jyy):
 
 def diffuse(theta, coh, passes: int, sigma: float = 2.0,
             growth: float = 1.8, max_sigma: float = 64.0):
-    """Bleed direction out of confident regions into flat ones.
+    """Propagate direction from confident regions into flat ones.
 
-    Angles cannot be averaged directly -- they wrap, and a stroke direction
-    is undirected, so theta and theta+pi mean the same thing. Both problems
-    go away by averaging the doubled-angle vector (cos 2t, sin 2t), which is
-    the standard representation for orientation fields.
+    Angles cannot be averaged directly: they wrap, and stroke direction is
+    undirected, so theta and theta+pi are the same. Averaging the doubled-angle
+    vector (cos 2t, sin 2t) handles both.
 
-    The blur radius grows by `growth` each pass rather than staying fixed.
-    At a constant sigma the reach after n passes is only sigma*sqrt(n), so
-    four passes at sigma 2 travel about six pixels -- nothing, against a sky
-    thousands of pixels across, which would then fall back entirely to the
-    bias angle. Growing the radius makes the reach geometric, so the same
-    four passes carry direction roughly ten times further for about the same
-    cost.
+    The blur radius grows by `growth` each pass. At constant sigma the reach
+    after n passes is sigma*sqrt(n) -- four passes at sigma 2 travel about six
+    pixels, too short to cross a large flat region, which then falls back to the
+    bias angle. Growing the radius makes the reach geometric: the same four
+    passes carry direction roughly ten times further at about the same cost.
     """
     if passes <= 0:
         return theta
@@ -111,10 +103,9 @@ def build_field(
 ):
     """Full field: (theta, coherence), both at source resolution.
 
-    Where the image is directional the tangent wins. Where it is flat the
-    field falls back toward `bias_angle_deg`, mixed in proportion to how
-    little confidence there is, so a sky reads as a consistent grain rather
-    than as noise.
+    Directional regions use the tangent. Flat regions fall back toward
+    `bias_angle_deg`, mixed in proportion to the missing confidence, so they get
+    a consistent grain instead of noise.
     """
     jxx, jxy, jyy = structure_tensor(luma, smoothing)
     theta, coh = tangent_and_coherence(jxx, jxy, jyy)

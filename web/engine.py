@@ -4,11 +4,10 @@ Two views, both produced by the same code as the export.
 
   fit     the whole canvas, scaled down until the mark count is small
           enough to draw quickly. Marks scale with it, so the result is a
-          faithful reduction rather than a different picture.
+          faithful reduction.
   detail  a crop rendered at full canvas scale, so marks come out at the
-          size they will actually print. Without this you are still tuning
-          blind, because a 0.25pt dot on a 28in canvas is invisible in any
-          whole-canvas view.
+          size they will print. A 0.25pt dot on a 28in canvas is invisible
+          in any whole-canvas view.
 """
 
 from __future__ import annotations
@@ -30,8 +29,8 @@ class Engine:
     """Holds the decoded source image so slider moves do not re-read it."""
 
     #: mark budgets and proxy sizes for the two preview qualities. Coarse
-    #: runs while a slider is moving and must stay well inside a frame or
-    #: dragging feels stuck; full runs once the control is released.
+    #: runs while a slider is moving and must stay well inside a frame; full
+    #: runs once the control is released.
     COARSE = dict(budget=7_000, proxy_edge=560, relax=4, diffusion=3)
     FULL = dict(budget=26_000, proxy_edge=1100, relax=None, diffusion=None)
 
@@ -103,10 +102,9 @@ class Engine:
     def flow_field(self, p: Params, rgb: np.ndarray):
         """Cached edge-tangent field for this image and these flow settings.
 
-        Worth caching because it costs about 70% of a line-mode preview and
-        depends on none of the tone or sampling parameters -- it is built
-        from raw luma. Dragging density, length, seed or mark size in line
-        mode therefore reuses it.
+        Costs about 70% of a line-mode preview and depends on no tone or sampling
+        parameter -- it is built from raw luma. Dragging density, length, seed or
+        mark size in line mode reuses it.
         """
         if not p.line_mode:
             return None
@@ -152,11 +150,10 @@ class Engine:
         px_scale = proxy.shape[1] / max(full.shape[1], 1)
         # Shrink the canvas but NOT the marks. Density is dots per point
         # squared, so a canvas scaled by k carries k^2 marks; scaling the
-        # radius too would scale ink coverage by k^4 and the preview would
-        # read far lighter than the print -- 8x lighter at k = 0.35. Holding
-        # mark size fixed keeps coverage, and therefore tone, exact. Texture
-        # comes out magnified by 1/k, which is what makes a whole-canvas view
-        # of sub-point marks legible at all.
+        # radius too would scale ink coverage by k^4 -- 8x lighter than the
+        # print at k = 0.35. Holding mark size fixed keeps coverage, and
+        # therefore tone, exact. Texture comes out magnified by 1/k, so
+        # sub-point marks stay visible in a whole-canvas view.
         scaled = replace(
             p,
             canvas_w_in=p.canvas_w_in * k,
@@ -166,10 +163,9 @@ class Engine:
         res = build(scaled, rgb=proxy, theta=self.flow_field(scaled, proxy))
         if not coarse:
             # The proxy's mean darkness drifts a couple of percent from the
-            # full image's, so a count derived from it is an estimate. On the
-            # refine pass compute it properly; it costs a fraction of what the
-            # sampling already cost, and a mark count that disagrees with the
-            # export is worse than useless.
+            # full image's, so a count derived from it is an estimate. Compute
+            # it properly on the refine pass; it costs a fraction of the
+            # sampling, and the count must match the export.
             full_target = self.exact_target(p, full)
         res.stats["full_target"] = full_target
         res.stats["full_w_in"] = p.canvas_w_in

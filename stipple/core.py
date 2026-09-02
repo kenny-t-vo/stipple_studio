@@ -50,13 +50,11 @@ def build(p: Params, *, max_edge: int | None = None,
     """Run the pipeline and return the marks, without writing anything.
 
     `max_edge` downscales the source first. The GUI uses it for preview: the
-    same code path at a smaller scale, so what you see is the real algorithm
-    rather than a stand-in.
+    same code path at a smaller scale.
 
     `crop` is (x0, y0, x1, y1) in normalised source coordinates. The canvas
-    shrinks to match, so marks come out at their true size -- that is what
-    makes the detail view a real 1:1 view of the export rather than a
-    scaled-down impression of it.
+    shrinks to match, so marks come out at their true size and the detail view
+    is 1:1 with the export.
     """
     p.validate()
     t0 = time.time()
@@ -71,11 +69,10 @@ def build(p: Params, *, max_edge: int | None = None,
         cy0, cy1 = sorted((int(y0 * h0), int(y1 * h0)))
         cx1, cy1 = max(cx1, cx0 + 1), max(cy1, cy0 + 1)
         rgb = rgb[cy0:cy1, cx0:cx1]
-        # Scale from the RESOLVED canvas, not from the raw fields. Under a
-        # locked aspect the height is derived from the source and canvas_h_in
-        # is never read, so it can hold anything; scaling that stale value
-        # gave the crop a canvas of the wrong shape and floated the image in
-        # a band of empty paper.
+        # Scale from the RESOLVED canvas, not the raw fields. Under a locked
+        # aspect the height is derived from the source and canvas_h_in is
+        # never read, so it can hold anything; scaling that stale value gave
+        # the crop a canvas of the wrong shape.
         base = geometry_for(p, h0, w0)
         p = replace(p,
                     canvas_w_in=base.canvas_w_in * (cx1 - cx0) / w0,

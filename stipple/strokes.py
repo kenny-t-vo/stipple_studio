@@ -32,9 +32,9 @@ def _dir_at(theta: np.ndarray, x: np.ndarray, y: np.ndarray, geom: Geometry):
 def _align(dx, dy, rx, ry):
     """Flip direction vectors that oppose a reference.
 
-    The field stores an orientation, not a heading: theta and theta+pi are
-    the same line. Integrating without fixing the sign at every step makes
-    streamlines reverse on themselves and strokes collapse to nothing.
+    The field stores an orientation, not a heading: theta and theta+pi are the
+    same line. Integrating without fixing the sign at every step makes
+    streamlines reverse on themselves and strokes collapse.
     """
     flip = (dx * rx + dy * ry) < 0.0
     return np.where(flip, -dx, dx), np.where(flip, -dy, dy)
@@ -76,11 +76,11 @@ def build_strokes(
 ) -> Strokes:
     """Grow a curved stroke through each seed point, along the flow field.
 
-    Each stroke is integrated outward in both directions from its seed, so
-    the seed stays at the centre and the blue-noise spacing of the point set
-    still governs the texture. Length scales with local darkness and with
-    per-stroke noise, so dark regions read as long strokes and light regions
-    trail off into marks barely longer than dots -- which is what a pen does.
+    Each stroke is integrated outward in both directions from its seed, so the
+    seed stays at the centre and the point set's blue-noise spacing still
+    governs the texture. Length scales with local darkness and per-stroke noise:
+    dark regions give long strokes, light regions give marks barely longer than
+    dots.
     """
     n = len(pts)
     if n == 0:

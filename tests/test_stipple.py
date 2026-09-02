@@ -160,7 +160,7 @@ def test_different_seeds_differ(base):
 
 
 def test_relaxation_improves_spacing_uniformity(base):
-    """The whole point of the rewrite."""
+    """Relaxation must reduce the spread of nearest-neighbour distances."""
     base.sampler = "classic"
     classic = build(base).points
     base.sampler = "relaxed"
@@ -266,7 +266,7 @@ def test_source_colour_groups_into_paths(base, tmp_path):
 
 
 def test_source_colour_is_sampled_from_the_image(tmp_path):
-    """Dots must take the colour under them, not an average or a guess."""
+    """Dots must take the colour of the pixel under them."""
     a = np.zeros((200, 200, 3), np.uint8)
     a[:100, :100] = (200, 40, 40)
     a[:100, 100:] = (40, 160, 40)
@@ -422,9 +422,9 @@ def test_flat_regions_fall_back_to_the_bias_angle():
 def test_diffusion_carries_direction_into_a_blank_region():
     """Half structured, half featureless: the blank half must inherit.
 
-    A flat neighbourhood gives arctan2(0, 0), a constant -- so the blank half
-    already looks perfectly self-consistent without any diffusion. The test
-    that means something is whether it agrees with the structured half.
+    A flat neighbourhood gives arctan2(0, 0), a constant, so the blank half is
+    already self-consistent without any diffusion. What matters is whether it
+    agrees with the structured half.
     """
     ANGLE = 30.0
     a = np.full((80, 80), 0.5, np.float32)

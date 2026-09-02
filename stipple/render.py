@@ -21,10 +21,9 @@ _RESAMPLE = getattr(Image, "Resampling", Image).LANCZOS
 def boustrophedon(pts: np.ndarray, band_pt: float) -> np.ndarray:
     """Order points in serpentine bands: left-to-right, then right-to-left.
 
-    Two payoffs. Consecutive points end up physically close, so emitting
-    relative path deltas produces small numbers and a materially smaller
-    file. And an editor (or a pen) walking the path in order does far less
-    jumping around than with unsorted points.
+    Consecutive points end up physically close, so relative path deltas stay
+    small and the file shrinks. An editor or pen walking the path in order also
+    travels much less than with unsorted points.
     """
     if len(pts) == 0:
         return np.zeros(0, dtype=np.int64)
@@ -39,9 +38,9 @@ def boustrophedon(pts: np.ndarray, band_pt: float) -> np.ndarray:
 def quantize_colors(rgb: np.ndarray, levels: int = 6):
     """Snap per-point colours to a coarse cube so they group into few paths.
 
-    Emitting one element per point with its own fill would defeat the whole
-    point of the compound path. Quantising to `levels` steps per channel
-    yields at most levels^3 groups, each of which becomes one path.
+    One element per point with its own fill defeats the compound path.
+    Quantising to `levels` steps per channel yields at most levels^3 groups,
+    each becoming one path.
     """
     q = np.clip((rgb * (levels - 1)).round().astype(np.int32), 0, levels - 1)
     keys = (q[:, 0] * levels + q[:, 1]) * levels + q[:, 2]
@@ -196,11 +195,10 @@ def _plain_strokes(buf, st, idx) -> None:
 def _tapered_strokes(buf, st, idx, nx, ny) -> None:
     """Filled outline per stroke: two quadratics bulging opposite ways.
 
-    The pair meets at both endpoints, so the shape narrows to a point at each
-    end and is widest in the middle -- the profile a nib leaves. It costs two
-    control points per stroke rather than a polygon walked along the
-    centreline, which at this mark count is the difference between a usable
-    file and an unusable one.
+    The pair meets at both endpoints, so the shape narrows at each end and is
+    widest in the middle. Two control points per stroke instead of a polygon
+    walked along the centreline, which at this mark count is the difference
+    between a usable file and an unusable one.
     """
     px = py = 0.0
     out = []

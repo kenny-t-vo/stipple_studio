@@ -1,6 +1,6 @@
 """Point samplers.
 
-Three characters, all producing points in canvas coordinates (points):
+Three samplers, all producing points in canvas coordinates (points):
 
   classic  the original dart-throwing sampler. Kept because it is what the
            existing artwork was made with. Its nearest-neighbour spread is
@@ -54,8 +54,8 @@ def _sample_field(field: np.ndarray, x: np.ndarray, y: np.ndarray, geom: Geometr
 def seed_by_density(dens: np.ndarray, n: int, geom: Geometry, rng: np.random.Generator):
     """Draw n points with probability proportional to the density field.
 
-    Inverse-transform sampling over the flattened field: exact, and fast
-    enough to be irrelevant even on a 7-megapixel source.
+    Inverse-transform sampling over the flattened field. Exact, and negligible
+    cost even on a 7-megapixel source.
     """
     flat = dens.ravel().astype(np.float64)
     total = flat.sum()
@@ -89,21 +89,19 @@ def relax(
 ) -> np.ndarray:
     """Even out spacing by pushing each point off its too-close neighbours.
 
-    The textbook approach here is weighted Lloyd relaxation: move each point
-    to the density-weighted centroid of its Voronoi cell. It does not work at
-    this scale. Estimating a centroid needs a raster accumulation grid, and at
-    216k dots on a 21x28in canvas each Voronoi cell covers only ~14 source
-    pixels -- so the centroid is estimated from ~14 samples and is almost pure
-    noise. Measured: CoV pinned at 0.45 no matter how many iterations ran.
-    Reaching a usable ~55 samples per cell needs 2x supersampling, 28M grid
-    points and roughly 48 seconds.
+    Weighted Lloyd relaxation -- move each point to the density-weighted
+    centroid of its Voronoi cell -- does not work at this scale. Estimating a
+    centroid needs a raster accumulation grid, and at 216k dots on a 21x28in
+    canvas each Voronoi cell covers only ~14 source pixels, so the centroid is
+    estimated from ~14 samples and is close to noise. Measured: CoV pinned at
+    0.45 regardless of iteration count. Reaching a usable ~55 samples per cell
+    needs 2x supersampling, 28M grid points and roughly 48 seconds.
 
-    This is grid-free instead. Each point looks up its target spacing from the
-    density field, finds its k nearest neighbours, and is displaced away from
-    any that sit inside that spacing. Because the target radius is local, dense
-    regions relax against a small radius and sparse regions against a large
-    one, so tone is preserved while spacing evens out. Cost is one KD-tree
-    query per iteration.
+    This is grid-free. Each point looks up its target spacing from the density
+    field, finds its k nearest neighbours, and is displaced away from any that
+    sit inside that spacing. The target radius is local, so dense regions relax
+    against a small radius and sparse regions against a large one: tone is
+    preserved while spacing evens out. Cost is one KD-tree query per iteration.
     """
     if iterations <= 0 or len(pts) == 0:
         return pts
@@ -295,15 +293,14 @@ def _top_up(pts: np.ndarray, dens, geom: Geometry, target: int,
             rng: np.random.Generator) -> np.ndarray:
     """Make up any shortfall with density-proportional points.
 
-    Dart throwing stops when it runs out of passes rather than when the plane
-    is full, and it stops consistently short: measured at 97.6% of target
-    across image types, canvas sizes and densities. A 2.4% deficit is a 2.4%
-    lightening of every tone, which is a systematic error rather than noise.
+    Dart throwing stops when it runs out of passes, not when the plane is full,
+    and stops consistently short: measured at 97.6% of target across image
+    types, canvas sizes and densities. A 2.4% deficit lightens every tone by
+    2.4%, systematically.
 
-    The made-up points are drawn from the density field, so tone is right;
-    they are placed without regard to spacing, so a handful start too close
-    to a neighbour. At this proportion relaxation absorbs them, and being
-    slightly less even is a far smaller error than being uniformly too light.
+    Top-up points are drawn from the density field, so tone is right, but are
+    placed without regard to spacing, so a few start too close to a neighbour.
+    At this proportion relaxation absorbs them.
     """
     short = target - len(pts)
     if short <= 0:

@@ -36,8 +36,8 @@ def image(tmp_path_factory):
 
 @pytest.fixture
 def params(image, tmp_path):
-    # Big enough that the preview must scale down, which is the case worth
-    # testing: at these settings the export runs to ~180k marks.
+    # Big enough that the preview must scale down; at these settings the
+    # export runs to ~180k marks.
     return Params(in_path=image, out_path=str(tmp_path / "o.svg"),
                   canvas_w_in=20.0, max_density=0.10, relax_iterations=3)
 

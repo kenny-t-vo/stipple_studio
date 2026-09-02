@@ -1,9 +1,8 @@
 """Local HTTP backend and desktop shell.
 
-The window is pywebview when it is available -- a real macOS window with no
-browser chrome -- and falls back to the default browser otherwise. The
-server binds to 127.0.0.1 on an ephemeral port and is only ever spoken to
-by the page it serves.
+The window is pywebview when available -- a real macOS window with no
+browser chrome -- and the default browser otherwise. The server binds to
+127.0.0.1 on an ephemeral port, and only the page it serves talks to it.
 """
 
 from __future__ import annotations
@@ -221,14 +220,13 @@ class Handler(BaseHTTPRequestHandler):
 def _claim_foreground(name: str = "Stipple") -> None:
     """Take a Dock presence under our own name, before the GUI starts.
 
-    The bundle's executable is a shell script that execs the framework
-    Python, so macOS attributes the process to Python.app rather than to
-    Stipple.app: the Dock reads "Python" and the window opens behind
-    whatever was already in front. From the outside that is indistinguishable
-    from the app not launching at all.
+    The bundle's executable is a shell script that execs the framework Python,
+    so macOS attributes the process to Python.app rather than Stipple.app: the
+    Dock reads "Python" and the window opens behind whatever was already in
+    front, which looks like the app failing to launch.
 
-    Overwriting CFBundleName in the running bundle's info dictionary is the
-    long-standing way to fix the name without restructuring the bundle.
+    Overwriting CFBundleName in the running bundle's info dictionary fixes the
+    name without restructuring the bundle.
     """
     try:
         from AppKit import NSApplication, NSApplicationActivationPolicyRegular

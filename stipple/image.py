@@ -31,10 +31,9 @@ def _hex_to_rgb01(color: str) -> np.ndarray:
 def load_rgb(path: str, paper: str = "#ffffff") -> np.ndarray:
     """Load any image as float32 RGB in [0, 1], honouring EXIF orientation.
 
-    Transparency is composited onto `paper` rather than discarded, which is
-    what the original script got wrong: dropping the alpha channel left
-    transparent regions holding whatever RGB happened to sit underneath,
-    and those regions were then stippled as if they were solid.
+    Transparency is composited onto `paper`, not discarded. Dropping the alpha
+    channel leaves transparent regions holding whatever RGB sits underneath,
+    which then gets stippled as solid.
     """
     img = Image.open(path)
 
@@ -89,9 +88,8 @@ def prepare(
 ) -> np.ndarray:
     """Brightness -> darkness in [0,1], where 1 means "as dark as it gets".
 
-    Order matters: blur first so that levels and gamma operate on clean
-    values, otherwise sensor noise is amplified straight into the density
-    field and shows up as dot chaos.
+    Blur first, so levels and gamma operate on clean values. Otherwise sensor
+    noise is amplified into the density field.
     """
     v = np.asarray(luma, dtype=np.float32)
 

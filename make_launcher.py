@@ -6,13 +6,11 @@ folder, so edits take effect on the next launch with nothing to rebuild. For
 a self-contained bundle that runs on a machine with no Python, use
 build_app.py instead.
 
-It installs to ~/Applications, NOT next to the source, and that is not a
-matter of taste. macOS will not launch an app bundle from this project's
-exFAT volume: the volume is mounted noowners, so the executable has no
-verifiable ownership and LaunchServices silently declines. `open` returns
-success and nothing happens. Verified by launching identical bundles from
-both filesystems -- the APFS copy ran, the exFAT copy did not. The launcher
-therefore lives on the internal drive and points back here.
+Installs to ~/Applications, not next to the source. macOS will not launch an
+app bundle from this project's exFAT volume: it is mounted noowners, so the
+executable has no verifiable ownership and LaunchServices declines silently
+-- `open` returns success and nothing happens. Verified with identical
+bundles on both filesystems: the APFS copy ran, the exFAT copy did not.
 """
 
 from __future__ import annotations
@@ -60,8 +58,8 @@ fail() {{
   exit 1
 }}
 
-# The project lives on an external volume; say so plainly rather than
-# failing with a stack trace when it is unplugged.
+# The project lives on an external volume; report that rather than failing
+# with a stack trace when it is unplugged.
 [ -d "$ROOT" ] || fail "Cannot find the project folder:
 $ROOT
 

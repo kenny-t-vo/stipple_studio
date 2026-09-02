@@ -93,9 +93,8 @@ function fmt(k, v) {
 }
 
 // A row's `on` names the condition under which it is live; anything else is
-// dimmed and inert. Forms: "key", "!key", "key==value". This was previously
-// expressed as `dim`, meaning the opposite for the == form and the same for
-// the others, so enabling line mode dimmed every line control.
+// dimmed and inert. Forms: "key", "!key", "key==value". Replaces `dim`, which
+// inverted the == form and so dimmed every line control in line mode.
 function live(cond) {
   if (!cond) return true;
   const eq = cond.split('==');
@@ -193,8 +192,8 @@ function makeRow(r) {
   });
   inp.addEventListener('change', () => changed(false));   // refine on release
 
-  // A slider cannot hit gamma 2.60 reliably, and for a tool whose output is
-  // judged at three decimal places that matters. Click the number to type it.
+  // A slider cannot hit gamma 2.60 reliably at three decimal places.
+  // Click the number to type it.
   val.dataset.edit = '1';
   val.title = 'click to type a value';
   val.addEventListener('click', () => editValue(r, val, inp));
@@ -215,8 +214,8 @@ function editValue(r, val, slider) {
   const commit = (apply) => {
     if (apply) {
       const v = parseFloat(box.value);
-      // Out-of-range typing is a slip, not an instruction: clamp rather than
-      // reject, so the control cannot be driven outside what it can show.
+      // Clamp out-of-range input rather than rejecting it, so the control
+      // cannot be driven outside what it can show.
       if (Number.isFinite(v)) {
         P[r.k] = Math.min(Math.max(v, r.min), r.max);
         slider.value = P[r.k];
@@ -388,11 +387,10 @@ function paint(canvas, res, pxPerPt, wPt, hPt) {
     }
   } else {
     const scale = m.scaleWithDarkness;
-    // A 0.25pt dot on a 28in canvas is far under one device pixel in any
-    // whole-canvas view. Drawn at its true radius it vanishes; drawn at a
-    // legible radius it over-inks and the tone reads darker than it prints.
-    // Draw at the floor and drop opacity by the area actually covered, so
-    // total ink -- which is what tone is -- stays truthful.
+    // A 0.25pt dot on a 28in canvas is under one device pixel in any
+    // whole-canvas view: at true radius it vanishes, at a legible radius it
+    // over-inks and reads darker than it prints. Draw at the floor and scale
+    // opacity by the area actually covered, so total ink is preserved.
     const floor = 0.5 / (pxPerPt * dpr);
     let alpha = 1;
     if (m.radius < floor) alpha = Math.max(0.05, (m.radius * m.radius) / (floor * floor));

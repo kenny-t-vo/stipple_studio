@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 """Build a self-contained Stipple.app with PyInstaller.
 
-Use this for a bundle that runs on another Mac with no Python installed. It
-takes a minute or two and must be rerun after code changes, so for everyday
-work prefer make_launcher.py, which points at this source tree.
+For a bundle that runs on another Mac with no Python installed. Takes a
+minute or two and must be rerun after code changes; for everyday work use
+make_launcher.py, which points at this source tree.
 
-Apple Silicon only, matching the machines this is for. The bundle is
-unsigned: macOS will refuse the first launch on another machine until it is
-opened once via right-click -> Open.
+Apple Silicon only. The bundle is unsigned, so macOS refuses the first
+launch on another machine until it is opened once via right-click -> Open.
 """
 
 from __future__ import annotations

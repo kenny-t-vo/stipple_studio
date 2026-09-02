@@ -69,12 +69,11 @@ def target_count(dens: np.ndarray, geom: Geometry) -> int:
     return int(round(float(dens.mean()) * geom.image_area_pt2))
 
 
-#: Random disk packing saturates well below the hexagonal limit, so a
-#: disk radius of 1/sqrt(d) yields noticeably fewer than d points per unit
-#: area. Measured on the reference image: an uncorrected radius filled only
-#: 87% of the target count, and the shortfall fell entirely on the darkest
-#: regions -- which saturate first -- visibly flattening tone. 0.72 was the
-#: largest value that still reached 100% fill.
+#: Random disk packing saturates well below the hexagonal limit, so a disk
+#: radius of 1/sqrt(d) yields fewer than d points per unit area. Measured on
+#: the reference image: an uncorrected radius filled 87% of the target count,
+#: with the shortfall entirely in the darkest regions, which saturate first
+#: and flattened tone. 0.72 was the largest value that still reached 100%.
 PACKING_ALPHA = 0.72
 
 
@@ -82,12 +81,10 @@ def spacing_field(dens: np.ndarray, floor: float,
                   alpha: float = PACKING_ALPHA) -> np.ndarray:
     """Per-pixel minimum spacing in points, derived from local density.
 
-    For a locally uniform point set of density d the natural spacing goes as
-    1/sqrt(d), scaled by `alpha` to account for packing inefficiency. Using
-    this as a per-point Poisson-disk radius is what makes spacing grade with
-    tone; the original script used one constant separation everywhere, so
-    light regions stayed random and clumpy while dark regions never came
-    close to the floor.
+    For a locally uniform point set of density d, spacing goes as 1/sqrt(d),
+    scaled by `alpha` for packing inefficiency. Used as a per-point Poisson-disk
+    radius, this grades spacing with tone. One constant separation everywhere
+    leaves light regions clumpy and dark regions short of the floor.
     """
     with np.errstate(divide="ignore", invalid="ignore"):
         r = np.where(dens > 0, alpha / np.sqrt(np.maximum(dens, 1e-12)), np.inf)
