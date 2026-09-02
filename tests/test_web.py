@@ -155,7 +155,11 @@ def test_pack_appends_colour_bytes(params):
 # ── server ───────────────────────────────────────────────────────────
 
 @pytest.fixture(scope="module")
-def base_url():
+def base_url(tmp_path_factory):
+    # Point the server's state directory at a temp dir; /api/render persists
+    # whatever params it is given, and that must not land in the real one.
+    import os
+    os.environ["STIPPLE_STATE_DIR"] = str(tmp_path_factory.mktemp("state"))
     import server as S
     httpd = ThreadingHTTPServer(("127.0.0.1", 0), S.Handler)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
@@ -199,6 +203,14 @@ def test_preview_returns_binary_and_meta(base_url, params):
     meta = json.loads(h["X-Stipple-Meta"])
     assert meta["count"] > 0
     assert len(body) == meta["count"] * meta["stride"] * 4
+
+
+def test_render_does_not_touch_the_real_saved_settings(base_url):
+    """Running the suite must not overwrite the user's last-used params."""
+    import server as S
+    assert "pytest" in str(S.STATE_DIR) or "tmp" in str(S.STATE_DIR).lower()
+    real = Path.home() / ".local" / "share" / "stipple" / "last.json"
+    assert S.LAST != real
 
 
 def test_render_writes_the_file(base_url, params, tmp_path):

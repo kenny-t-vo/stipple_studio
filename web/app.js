@@ -174,9 +174,7 @@ function makeRow(r) {
     const lab = el('div', 'row__l'); lab.textContent = r.l;
     const btn = el('button', 'btn'); btn.type = 'button'; btn.textContent = 'choose…';
     const head = el('div', 'row'); head.append(lab, btn);
-    const val = el('div', 'row__v'); val.id = 'p_' + r.k;
-    val.style.textAlign = 'left'; val.style.wordBreak = 'break-all';
-    val.style.color = 'var(--dim)';
+    const val = el('div', 'path'); val.id = 'p_' + r.k;
     btn.addEventListener('click', () => pickFile(r.k, r.type === 'savefile'));
     row.append(head, val);
     return row;
@@ -194,9 +192,46 @@ function makeRow(r) {
     changed(true);                       // coarse while dragging
   });
   inp.addEventListener('change', () => changed(false));   // refine on release
+
+  // A slider cannot hit gamma 2.60 reliably, and for a tool whose output is
+  // judged at three decimal places that matters. Click the number to type it.
+  val.dataset.edit = '1';
+  val.title = 'click to type a value';
+  val.addEventListener('click', () => editValue(r, val, inp));
   row.append(lab, val, inp);
   return row;
 }
+
+function editValue(r, val, slider) {
+  if (val.querySelector('input')) return;
+  const box = el('input');
+  box.type = 'text';
+  box.value = String(P[r.k]);
+  val.textContent = '';
+  val.appendChild(box);
+  box.focus();
+  box.select();
+
+  const commit = (apply) => {
+    if (apply) {
+      const v = parseFloat(box.value);
+      // Out-of-range typing is a slip, not an instruction: clamp rather than
+      // reject, so the control cannot be driven outside what it can show.
+      if (Number.isFinite(v)) {
+        P[r.k] = Math.min(Math.max(v, r.min), r.max);
+        slider.value = P[r.k];
+      }
+    }
+    val.textContent = readout(r);
+    if (apply) changed(false);
+  };
+  box.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); commit(true); }
+    if (e.key === 'Escape') { e.preventDefault(); commit(false); }
+  });
+  box.addEventListener('blur', () => commit(true));
+}
+
 
 function readout(r) {
   const v = P[r.k];
@@ -213,9 +248,13 @@ function syncControls() {
       else if (c.value !== String(P[r.k])) c.value = P[r.k];
     }
     const v = document.getElementById('v_' + r.k);
-    if (v) v.textContent = readout(r);
+    if (v && !v.querySelector('input')) v.textContent = readout(r);
     const p = document.getElementById('p_' + r.k);
-    if (p) p.textContent = P[r.k] || '—';
+    if (p) {
+      const full = P[r.k] || '';
+      p.textContent = full ? full.split('/').pop() : '—';
+      p.title = full;                       // whole path on hover
+    }
     document.querySelectorAll(`.cells button[data-k="${r.k}"]`).forEach(b => {
       b.setAttribute('aria-pressed', String(b.dataset.val === P[r.k]));
     });

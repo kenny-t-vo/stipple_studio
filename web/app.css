@@ -85,7 +85,21 @@ h1 .v{font:var(--t6)/1 var(--mono);color:var(--faint);letter-spacing:0;
 .row__l{font-size:var(--t4);color:var(--dim)}
 .row__v{font:var(--t5)/1.5 var(--mono);font-variant-numeric:tabular-nums;
   text-align:right;color:var(--fg)}
+.row__v[data-edit]{cursor:text}
+.row__v[data-edit]:hover{color:var(--blue)}
+.row__v input{font:var(--t5)/1.5 var(--mono);text-align:right;width:74px;
+  border-bottom-color:var(--blue);padding:0}
+
+/* A full path is three wrapped lines of noise. Show the name; keep the path
+   in the tooltip and readable on hover. */
+.path{font:var(--t5)/1.5 var(--mono);color:var(--dim);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;
+  text-align:left;max-width:100%}
 .row--full{grid-template-columns:1fr}
+
+/* Form controls default to the browser's own size, which lands outside the
+   six-step scale even on elements that render no text. */
+input,button,select{font-size:var(--t4)}
 
 input[type=range]{
   grid-column:1/-1;width:100%;height:15px;margin:1px 0 3px;

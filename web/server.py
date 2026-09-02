@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import os
 import socket
 import sys
 import threading
@@ -27,7 +28,10 @@ from stipple import __version__                      # noqa: E402
 from stipple.core import generate                    # noqa: E402
 from stipple.params import Params                    # noqa: E402
 
-STATE_DIR = Path.home() / ".local" / "share" / "stipple"
+# Overridable so the test suite does not overwrite the real saved settings:
+# /api/render persists the params it was given, and the tests call it.
+STATE_DIR = Path(os.environ.get("STIPPLE_STATE_DIR",
+                                Path.home() / ".local" / "share" / "stipple"))
 LAST = STATE_DIR / "last.json"
 PRESETS = ROOT.parent / "presets"
 
