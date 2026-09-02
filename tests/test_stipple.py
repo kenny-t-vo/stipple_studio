@@ -325,7 +325,7 @@ def test_cli_rejects_bad_sampler(gradient, tmp_path):
 
 # ── flow field ───────────────────────────────────────────────────────
 
-from stipple.flow import build_field, structure_tensor, tangent_and_coherence  # noqa: E402
+from stipple.flow import build_field  # noqa: E402
 from stipple.strokes import build_strokes  # noqa: E402
 from stipple.density import Geometry  # noqa: E402
 

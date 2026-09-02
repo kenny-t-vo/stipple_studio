@@ -12,7 +12,7 @@ from . import image as I
 from . import render as R
 from . import sample as S
 from . import flow as F
-from .strokes import Strokes, build_strokes
+from .strokes import build_strokes
 from .density import Geometry, density_field, geometry_for, spacing_field, target_count
 from .params import Params
 
