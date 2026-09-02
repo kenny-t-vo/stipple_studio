@@ -214,6 +214,48 @@ class Handler(BaseHTTPRequestHandler):
         self._send(200, f.read_bytes(), ctype)
 
 
+def _claim_foreground(name: str = "Stipple") -> None:
+    """Take a Dock presence under our own name, before the GUI starts.
+
+    The bundle's executable is a shell script that execs the framework
+    Python, so macOS attributes the process to Python.app rather than to
+    Stipple.app: the Dock reads "Python" and the window opens behind
+    whatever was already in front. From the outside that is indistinguishable
+    from the app not launching at all.
+
+    Overwriting CFBundleName in the running bundle's info dictionary is the
+    long-standing way to fix the name without restructuring the bundle.
+    """
+    try:
+        from AppKit import NSApplication, NSApplicationActivationPolicyRegular
+        from Foundation import NSBundle
+    except ImportError:
+        return
+    try:
+        info = NSBundle.mainBundle().infoDictionary()
+        if info is not None:
+            info["CFBundleName"] = name
+        NSApplication.sharedApplication().setActivationPolicy_(
+            NSApplicationActivationPolicyRegular)
+    except Exception:
+        pass
+
+
+def _bring_to_front() -> None:
+    """Raise the window once the GUI loop is up.
+
+    Runs from pywebview's start callback, which is not the main thread, so
+    this goes through NSRunningApplication rather than NSApplication.
+    """
+    try:
+        from AppKit import (NSApplicationActivateIgnoringOtherApps,
+                            NSRunningApplication)
+        NSRunningApplication.currentApplication().activateWithOptions_(
+            NSApplicationActivateIgnoringOtherApps)
+    except Exception:
+        pass
+
+
 def _free_port() -> int:
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
@@ -251,9 +293,11 @@ def serve(port: int | None = None, open_window: bool = True):
             pass
         return
 
+    _claim_foreground()
     WINDOW = webview.create_window("stipple", url, width=1380, height=920,
                                    min_size=(1040, 700), background_color="#ffffff")
-    webview.start()          # macOS requires this on the main thread
+    # macOS requires the GUI loop on the main thread.
+    webview.start(_bring_to_front)
 
 
 if __name__ == "__main__":

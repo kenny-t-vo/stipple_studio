@@ -5,7 +5,15 @@ SVG for Illustrator.
 
 ## Running it
 
-Double-click **Stipple.app**. That is the whole story day to day.
+Double-click **Stipple.app** in `~/Applications` (Finder sidebar → Go →
+Applications, or Spotlight). Drag it to the Dock if you use it often.
+
+It is installed there rather than in this folder for a reason: **macOS will
+not launch an app bundle from this exFAT volume.** The volume is mounted
+`noowners`, so the executable has no verifiable ownership and LaunchServices
+silently declines — `open` reports success and nothing happens. The launcher
+lives on the internal drive and points back here. If you move this project,
+rerun `python3 make_launcher.py` to repoint it.
 
 From a terminal:
 
@@ -25,11 +33,12 @@ Python 3.12 from Homebrew. It lives on the internal drive on purpose: this
 project sits on an exFAT volume, where virtualenvs are unreliable and which
 may be unmounted.
 
-`make_launcher.py` writes `Stipple.app`, a thin bundle pointing at this
-source tree — edits take effect on the next launch, nothing to rebuild. For a
+`make_launcher.py` installs `Stipple.app` into `~/Applications`, a thin
+bundle pointing at this source tree — edits take effect on the next launch, nothing to rebuild. For a
 bundle that runs on a Mac with no Python at all, `python3 build_app.py`
 produces a self-contained one in `dist/` (Apple Silicon, unsigned, so its
-first launch on another machine needs right-click → Open).
+first launch on another machine needs right-click → Open). Copy it off this
+volume before launching it, for the reason above.
 
 ## The interface
 
