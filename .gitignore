@@ -23,6 +23,7 @@ dist/
 *.tif
 *.tiff
 *.svg
+*.svgz
 
 # JSON is never ignored above, so no negation is needed here -- an earlier
 # "!presets/*.json" re-included the exFAT ._ sidecars, which match it too.
