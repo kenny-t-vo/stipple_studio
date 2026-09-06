@@ -49,9 +49,9 @@ body{
   border-right:1px solid var(--rule2);
   display:flex;flex-direction:column;min-height:0;
 }
-.pane__head{padding:var(--gut) var(--gut) 13px;border-bottom:1px solid var(--rule2)}
+.pane__head{padding:var(--gut) var(--gut) 13px}
 .pane__body{overflow-y:auto;overflow-x:hidden;flex:1;padding:0 var(--gut) 40px}
-.pane__foot{border-top:1px solid var(--rule2);padding:13px var(--gut)}
+.pane__foot{padding:13px var(--gut)}
 
 h1{
   font:var(--t1)/1.06 var(--serif);font-weight:400;letter-spacing:-.012em;
@@ -62,7 +62,7 @@ h1 .v{font:var(--t6)/1 var(--mono);color:var(--faint);letter-spacing:0;
 
 /* ── sections ──────────────────────────────────────────────────────── */
 
-.sec{border-top:1px solid var(--rule2);padding:15px 0 19px}
+.sec{border-top:1px solid var(--rule);padding:15px 0 19px}
 .sec:first-child{border-top:0}
 .sec__h{
   font:var(--t2)/1.06 var(--serif);font-weight:400;
