@@ -18,8 +18,8 @@ import random
 from typing import Callable
 
 import numpy as np
-from scipy.spatial import cKDTree
 
+from . import spatial
 from .density import Geometry, spacing_field
 from .params import Params
 
@@ -101,7 +101,8 @@ def relax(
     field, finds its k nearest neighbours, and is displaced away from any that
     sit inside that spacing. The target radius is local, so dense regions relax
     against a small radius and sparse regions against a large one: tone is
-    preserved while spacing evens out. Cost is one KD-tree query per iteration.
+    preserved while spacing evens out. Cost is one neighbour query per
+    iteration.
     """
     if iterations <= 0 or len(pts) == 0:
         return pts
@@ -119,8 +120,9 @@ def relax(
         r = _sample_field(spacing, pts[:, 0], pts[:, 1], geom)
         r = np.where(np.isfinite(r), r, finite_max) * reach
 
-        dist, idx = cKDTree(pts).query(pts, k=k + 1, workers=-1)
-        dist, idx = dist[:, 1:], idx[:, 1:]
+        # Neighbours outside the interaction radius come back as inf and
+        # fall out of the arithmetic below at zero weight.
+        dist, idx = spatial.neighbours(pts).knn_within(r, k)
 
         dx = pts[:, 0:1] - pts[idx, 0]
         dy = pts[:, 1:2] - pts[idx, 1]
@@ -166,7 +168,7 @@ def poisson_disk(
     Each pass proposes a batch of density-proportional candidates, thins them
     against a cell grid so no two survivors share a cell, then rejects any
     that fall inside an accepted point's disk. Batched rather than sequential
-    so the whole thing stays in numpy and scipy.
+    so the whole thing stays vectorised.
 
     The conflict test uses max(r_candidate, r_neighbour). Strictly that should
     consider every point whose radius reaches the candidate, not just its
@@ -200,7 +202,7 @@ def poisson_disk(
         r_cand = _sample_field(spacing, batch[:, 0], batch[:, 1], geom)
 
         if tree is not None:
-            dist, nn = tree.query(batch, workers=-1)
+            dist, nn = tree.nearest(batch)
             r_near = _sample_field(spacing, tree.data[nn, 0], tree.data[nn, 1], geom)
             batch = batch[dist >= np.maximum(r_cand, r_near)]
             if batch.shape[0] == 0:
@@ -210,9 +212,9 @@ def poisson_disk(
         # Resolve conflicts inside the surviving batch, greedily.
         order = np.argsort(-r_cand)          # place sparse regions first
         batch, r_cand = batch[order], r_cand[order]
-        bt = cKDTree(batch)
+        bt = spatial.neighbours(batch)
         dead = np.zeros(len(batch), dtype=bool)
-        for i, pairs in enumerate(bt.query_ball_point(batch, r_cand, workers=-1)):
+        for i, pairs in enumerate(bt.ball(batch, r_cand)):
             if dead[i]:
                 continue
             for j in pairs:
@@ -228,7 +230,7 @@ def poisson_disk(
         accepted.append(batch)
         total += len(batch)
         stacked = np.vstack(accepted)
-        tree = cKDTree(stacked)
+        tree = spatial.neighbours(stacked)
         _notify(progress, "sampling", min(1.0, total / max(target, 1)))
 
     return np.vstack(accepted) if accepted else np.zeros((0, 2), dtype=np.float64)

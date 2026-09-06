@@ -1,3 +1,8 @@
 numpy>=2.0
-scipy>=1.11
 pillow>=10.0
+
+# Optional. The pipeline falls back to numpy for the three scipy functions it
+# uses (gaussian_filter, sobel, cKDTree) and produces the same marks either
+# way, about twice as slow. Left in for the desktop build; the browser build
+# drops it, since it is most of the Pyodide payload.
+scipy>=1.11

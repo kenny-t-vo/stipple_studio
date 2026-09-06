@@ -10,7 +10,8 @@ would otherwise produce noise.
 from __future__ import annotations
 
 import numpy as np
-from scipy.ndimage import gaussian_filter, sobel
+
+from .filters import gaussian_filter, sobel
 
 
 def structure_tensor(luma: np.ndarray, sigma: float):

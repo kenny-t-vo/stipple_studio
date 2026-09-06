@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import numpy as np
 from PIL import Image, ImageOps
-from scipy.ndimage import gaussian_filter
+
+from .filters import gaussian_filter
 
 # Rec.709 luma weights, applied to sRGB-encoded values (the usual
 # "luminosity" convention in image editors).
