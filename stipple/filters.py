@@ -1,9 +1,8 @@
 """Separable filters, using scipy when it is installed.
 
-scipy is by far the largest package in a Pyodide payload, and `gaussian_filter`
-and `sobel` are the whole of what the image pipeline takes from it. The numpy
-versions below match scipy's output, so the desktop build (scipy, threaded)
-and the browser build (numpy only) produce the same artwork.
+The pipeline takes two functions from scipy.ndimage. The numpy versions here
+match them, so the browser build can leave scipy out of the Pyodide payload
+and still produce the same output.
 """
 
 from __future__ import annotations
@@ -16,9 +15,9 @@ __all__ = ["gaussian_filter", "sobel", "HAVE_SCIPY"]
 def _correlate1d(arr: np.ndarray, weights, axis: int) -> np.ndarray:
     """One separable correlation pass with edge replication.
 
-    Matches scipy.ndimage.correlate1d at origin 0: the tap at index j reads
-    input[i + j - len(w)//2]. Accumulates in float64 and casts back, which is
-    what the C version does with its double accumulator.
+    scipy.ndimage.correlate1d at origin 0: the tap at index j reads
+    input[i + j - len(w)//2]. Accumulates in float64 and casts back, as the C
+    version does.
     """
     w = np.asarray(weights, dtype=np.float64)
     r = len(w) // 2

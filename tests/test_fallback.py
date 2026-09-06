@@ -1,8 +1,7 @@
 """The numpy stand-ins for the parts of scipy the pipeline uses.
 
 scipy is optional so the browser build can leave it out of the Pyodide
-payload. These tests hold the two backends to the same output, which is what
-lets the desktop and browser builds claim to be the same tool.
+payload. These hold the two backends to the same output.
 """
 
 from __future__ import annotations
@@ -158,10 +157,10 @@ def test_an_infinite_radius_reaches_every_point(field, recwarn):
     """spacing_field is inf wherever density is zero, and the nearest-pixel
     lookup can land there, so the samplers do pass inf through.
 
-    An inf radius must be turned into a ring width before the cast to int, not
-    after. Casting a float out of int64 range is undefined; this numpy
-    saturates upward, which lands on the right ring by luck and warns while
-    doing it, but WASM traps on the same conversion and numpy emulates it.
+    An inf radius must become a ring width before the cast to int. Casting a
+    float outside int64 range is undefined: this numpy saturates upward, which
+    lands on the right ring and warns doing it, but WASM traps on that
+    conversion and numpy emulates it there.
     """
     q = field[:20]
     radii = np.full(len(q), np.inf)

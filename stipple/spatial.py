@@ -1,11 +1,10 @@
 """Neighbour queries, using scipy's KD-tree when it is installed.
 
 The samplers need three things from a point set: the k nearest within a
-per-point radius, the plain nearest, and a per-point radius search.
-scipy.spatial.cKDTree does all three and uses every core. Without it a uniform
-grid does the same work in numpy. The grid finds the same neighbours as the
-tree rather than an approximation of them; the two disagree only on the last
-ulp of a distance, which reaches the finished marks at 1e-16 relative.
+per-point radius, the plain nearest, and a per-point radius search. cKDTree
+does all three across every core; without it a uniform grid does the same work
+in numpy. The grid is exact. The two backends disagree only on the last ulp of
+a distance, which reaches the finished marks at 1e-16 relative.
 """
 
 from __future__ import annotations
@@ -47,10 +46,9 @@ class _KDTreeIndex:
 class _GridIndex:
     """Uniform bucket grid over the point set.
 
-    Cells are sized for roughly one point each, so a query's own cell plus the
-    ring around it holds a handful of candidates. Where the search radius
-    exceeds one cell the ring widens to match; queries are grouped by the ring
-    they need so each group stays one vectorised gather.
+    Cells hold about one point each, so a search radius of one cell needs
+    only the ring around the query's own cell. Wider radii take a wider ring;
+    queries are grouped by the ring they need, one gather per group.
     """
 
     def __init__(self, pts: np.ndarray):
@@ -89,9 +87,9 @@ class _GridIndex:
     def _gather(self, qx: np.ndarray, qy: np.ndarray, r: int):
         """Candidate pairs for a block of (2r+1)^2 cells around each query.
 
-        Returns (qi, pi): qi indexes into qx/qy, pi into self.data. Expands the
-        per-cell runs of `order` without padding, so cost tracks the number of
-        points found rather than the number of cells looked at.
+        Returns (qi, pi): qi indexes into qx/qy, pi into self.data. The
+        per-cell runs of `order` are expanded unpadded, so cost tracks points
+        found, not cells looked at.
         """
         off = np.arange(-r, r + 1, dtype=np.int64)
         ox = np.repeat(off, off.size)
@@ -131,9 +129,9 @@ class _GridIndex:
     def _rings(self, radius: np.ndarray):
         """Ring width each query needs, as (width, query indices) groups.
 
-        The spacing field is infinite wherever density is zero, and rounding
-        into it puts an infinite radius here. That means every point, so it
-        takes the ring that spans the grid.
+        The spacing field is infinite where density is zero and rounding can
+        land there, so an infinite radius reaches this point. It means every
+        point, i.e. the ring that spans the grid.
         """
         r = np.asarray(radius, dtype=np.float64) / self.cell
         r = np.where(np.isfinite(r), np.ceil(r), float(self.reach))
