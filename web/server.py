@@ -122,6 +122,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({
                     "version": __version__,
                     "defaults": asdict(Params()),
+                    "preview_budget": Engine.FULL["budget"],
                     "last": last,
                     "native": WINDOW is not None,
                 })
@@ -156,6 +157,7 @@ class Handler(BaseHTTPRequestHandler):
                     view=body.get("view", "fit"),
                     crop=body.get("crop"),
                     coarse=bool(body.get("coarse")),
+                    budget=body.get("budget"),
                 )
                 data, meta = pack(res, k, p)
                 return self._send(200, data, "application/octet-stream",
@@ -176,6 +178,9 @@ class Handler(BaseHTTPRequestHandler):
                     "mb": round(res.stats.get("bytes", 0) / 1048576, 2),
                     "secs": round(res.elapsed, 1),
                 })
+
+            if u.path == "/api/autotone":
+                return self._json(ENGINE.auto_tone(_params(body.get("params"))))
 
             if u.path == "/api/preset":
                 return self._preset(body)

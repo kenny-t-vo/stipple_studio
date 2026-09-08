@@ -15,6 +15,7 @@ const SPEC = [
   ]},
   {t:'tone.', rows:[
     {type:'hist'},
+    {type:'action', l:'auto tone', act:'autoTone'},
     {k:'black_point', type:'range', l:'black point', min:0, max:.95, step:.01},
     {k:'white_point', type:'range', l:'white point', min:.05, max:1, step:.01},
     {k:'contrast',    type:'range', l:'contrast',    min:-1, max:1, step:.02},
@@ -57,6 +58,10 @@ const SPEC = [
     {k:'ink',   type:'color', l:'ink',   on:'color_mode==mono'},
     {k:'paper', type:'color', l:'paper'},
   ]},
+  {t:'preview.', rows:[
+    {k:'preview_budget', type:'range', l:'preview marks',
+     min:6000, max:120000, step:2000},
+  ]},
   {t:'output.', rows:[
     {k:'svg_structure', type:'cells', l:'svg',
      opts:[['compound','one path'],['circles','separate']]},
@@ -91,7 +96,9 @@ const el = (tag, cls) => { const n = document.createElement(tag); if (cls) n.cla
 
 function fmt(k, v) {
   if (typeof v !== 'number') return String(v);
-  if (Number.isInteger(v)) return String(v);
+  // Grouped above four digits, matching the stats line. Seeds and iteration
+  // counts stay bare.
+  if (Number.isInteger(v)) return v >= 10000 ? v.toLocaleString() : String(v);
   const a = Math.abs(v);
   return v.toFixed(a < 1 ? 2 : a < 10 ? 2 : 1);
 }
@@ -126,7 +133,19 @@ function buildControls() {
   syncControls();
 }
 
+const ACTIONS = {};
+
 function makeRow(r) {
+  if (r.type === 'action') {
+    const row = el('div', 'row row--full');
+    const b = el('button', 'btn');
+    b.type = 'button';
+    b.textContent = r.l;
+    b.addEventListener('click', () => ACTIONS[r.act]());
+    row.appendChild(b);
+    return row;
+  }
+
   if (r.type === 'hist') {
     const c = el('canvas', 'hist');
     c.id = 'hist'; c.width = 600; c.height = 76;
@@ -433,9 +452,11 @@ function showStats(m) {
   const host = $('#stats');
   host.textContent = '';
   const full = m.fullTarget;
+  const mag = m.scale > 0 ? 1 / m.scale : 1;
   [['marks', full.toLocaleString()],
    ['canvas', m.fullW.toFixed(2) + ' × ' + m.fullH.toFixed(2) + ' in'],
-   ['preview', m.count.toLocaleString() + ' @ ' + (m.scale * 100).toFixed(0) + '%'],
+   ['preview', m.count.toLocaleString()],
+   ['texture', mag < 1.02 ? 'actual size' : mag.toFixed(1) + '× actual'],
    ['time', (m.elapsed * 1000).toFixed(0) + ' ms']
   ].forEach(([k, v]) => {
     const s = el('div', 'stat');
@@ -538,6 +559,18 @@ async function pickFile(key) {
   } catch (e) { status(String(e.message || e), 'err'); }
 }
 
+ACTIONS.autoTone = async function () {
+  if (!P.in_path) return;
+  try {
+    status('measuring…', 'busy');
+    const t = await SHELL.autoTone(P);
+    P.black_point = t.black_point;
+    P.white_point = t.white_point;
+    P.gamma = t.gamma;
+    changed(false);
+  } catch (e) { status(String(e.message || e), 'err'); }
+};
+
 async function doExport() {
   const b = $('#export');
   b.disabled = true;
@@ -563,8 +596,11 @@ async function preset(save) {
 
 (async function init() {
   const info = await SHELL.init();
-  DEFAULTS = info.defaults;
-  P = Object.assign({}, info.defaults, info.last || {});
+  // preview_budget is not a pipeline parameter, so it is not in Params and
+  // never reaches a preset. It rides along in P because every control does.
+  DEFAULTS = Object.assign({}, info.defaults,
+                           {preview_budget: info.preview_budget});
+  P = Object.assign({}, DEFAULTS, info.last || {});
   $('#ver').textContent = info.version;
 
   buildControls();

@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from stipple.core import build, generate
 from stipple.density import density_field, geometry_for, spacing_field
-from stipple.image import load_rgb, prepare, to_luma
+from stipple.image import auto_levels, load_rgb, prepare, to_luma
 from stipple.params import Params
 from stipple.render import boustrophedon
 
@@ -544,3 +544,54 @@ def test_cli_line_mode(gradient, tmp_path):
              "--max-density", "0.03")
     assert r.returncode == 0, r.stderr
     assert out.exists()
+
+
+# ── auto tone ────────────────────────────────────────────────────────
+
+def _mean_darkness(luma, black, white, gamma, **kw):
+    return float(prepare(luma, black_point=black, white_point=white,
+                         gamma=gamma, **kw).mean())
+
+
+@pytest.mark.parametrize("gamma", [0.8, 2.2, 4.0])
+def test_auto_levels_holds_the_ink_weight(gradient, gamma):
+    """Mean darkness is the mark count -- density is linear in it -- so the
+    button must not change how heavy the drawing is, only how tone is spread."""
+    luma = to_luma(load_rgb(gradient))
+    before = _mean_darkness(luma, 0.0, 1.0, gamma)
+    black, white, g = auto_levels(luma, black_point=0.0, white_point=1.0, gamma=gamma)
+    after = _mean_darkness(luma, black, white, g)
+    assert after == pytest.approx(before, abs=2e-3)
+
+
+def test_auto_levels_widens_the_tonal_range(tmp_path):
+    """A low-contrast source should come back using more of the range."""
+    a = np.tile(np.linspace(110, 150, 200, dtype=np.uint8), (160, 1))
+    src = tmp_path / "flatish.png"
+    Image.fromarray(a, "L").convert("RGB").save(src)
+
+    luma = to_luma(load_rgb(str(src)))
+    black, white, g = auto_levels(luma)
+    assert white - black < 0.35            # the source only spans this much
+    before = prepare(luma, black_point=0.0, white_point=1.0, gamma=2.2)
+    after = prepare(luma, black_point=black, white_point=white, gamma=g)
+    assert after.std() > before.std() * 1.5
+
+
+def test_auto_levels_reads_the_inverted_image_when_inverting(gradient):
+    luma = to_luma(load_rgb(gradient))
+    plain = auto_levels(luma, invert=False)
+    flipped = auto_levels(luma, invert=True)
+    # Clipping the same histogram from the other end.
+    assert flipped[0] == pytest.approx(1.0 - plain[1], abs=0.02)
+    assert flipped[1] == pytest.approx(1.0 - plain[0], abs=0.02)
+
+
+def test_auto_levels_leaves_a_flat_image_alone(tmp_path):
+    a = np.full((80, 100), 128, dtype=np.uint8)
+    src = tmp_path / "flat.png"
+    Image.fromarray(a, "L").convert("RGB").save(src)
+    black, white, g = auto_levels(to_luma(load_rgb(str(src))))
+    assert (black, white) == (0.0, 1.0)    # nothing to stretch
+    assert 0.2 <= g <= 8.0
+

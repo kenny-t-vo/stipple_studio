@@ -68,6 +68,22 @@ class Engine:
     def histogram(self, path: str, paper: str, bins: int = 96):
         return I.histogram(I.to_luma(self.proxy(path, paper, self.proxy_edge)), bins=bins)
 
+    def auto_tone(self, p: Params) -> dict:
+        """Levels and gamma for the source, at full resolution.
+
+        Not the proxy: gamma is solved to hold mean darkness, and mean
+        darkness is the mark count, which `exact_target` measures on the full
+        image. Solving on the proxy moved the count by about 1%.
+        """
+        luma = I.to_luma(self.load(p.in_path, p.paper))
+        black, white, gamma = I.auto_levels(
+            luma, invert=p.invert, pre_blur=p.pre_blur,
+            black_point=p.black_point, white_point=p.white_point,
+            contrast=p.contrast, gamma=p.gamma,
+        )
+        return {"black_point": round(black, 4), "white_point": round(white, 4),
+                "gamma": gamma}
+
     def source_size(self, path: str, paper: str):
         full = self.load(path, paper)
         return {"width": int(full.shape[1]), "height": int(full.shape[0])}
@@ -127,8 +143,12 @@ class Engine:
                 self._flow[key] = got
         return got
 
-    def preview(self, p: Params, view: str = "fit", crop=None, coarse: bool = False):
+    def preview(self, p: Params, view: str = "fit", crop=None,
+                coarse: bool = False, budget: int | None = None):
         q = self.COARSE if coarse else self.FULL
+        # The coarse pass has to stay inside a frame, so it keeps its own
+        # budget whatever the interface asks for.
+        want = q["budget"] if coarse or not budget else int(budget)
         # Independent, so a build can cap one without the other.
         if q["relax"] is not None:
             p = replace(p, relax_iterations=min(p.relax_iterations, q["relax"]))
@@ -147,7 +167,7 @@ class Engine:
         full = self.load(p.in_path, p.paper)
         proxy = self.proxy(p.in_path, p.paper, q["proxy_edge"])
 
-        k, full_target = self._fit_scale(p, proxy, q["budget"])
+        k, full_target = self._fit_scale(p, proxy, want)
         # pre_blur is measured in source pixels, so it must shrink with the proxy.
         px_scale = proxy.shape[1] / max(full.shape[1], 1)
         # Shrink the canvas but NOT the marks. Density is dots per point
@@ -169,9 +189,13 @@ class Engine:
             # it properly on the refine pass; it costs a fraction of the
             # sampling, and the count must match the export.
             full_target = self.exact_target(p, full)
+        # Resolve the canvas rather than reporting the fields: under a locked
+        # aspect canvas_h_in is never read by the pipeline and holds whatever
+        # it last held, so the readout would show a stale height.
+        shown = geometry_for(p, *full.shape[:2])
         res.stats["full_target"] = full_target
-        res.stats["full_w_in"] = p.canvas_w_in
-        res.stats["full_h_in"] = p.canvas_h_in
+        res.stats["full_w_in"] = shown.canvas_w_in
+        res.stats["full_h_in"] = shown.canvas_h_in
         return res, k
 
 

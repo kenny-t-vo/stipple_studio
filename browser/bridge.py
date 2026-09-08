@@ -58,7 +58,8 @@ def call(name: str, payload: str) -> str:
 
 def _dispatch(name: str, body: dict) -> dict:
     if name == "init":
-        return {"version": __version__, "defaults": asdict(Params()), "native": False}
+        return {"version": __version__, "defaults": asdict(Params()),
+                "preview_budget": Engine.FULL["budget"], "native": False}
 
     if name == "histogram":
         return {"bins": ENGINE.histogram(body["path"], body.get("paper", "#ffffff"))}
@@ -70,10 +71,14 @@ def _dispatch(name: str, body: dict) -> dict:
         p = _params(body.get("params"))
         res, k = ENGINE.preview(p, view=body.get("view", "fit"),
                                 crop=body.get("crop"),
-                                coarse=bool(body.get("coarse")))
+                                coarse=bool(body.get("coarse")),
+                                budget=body.get("budget"))
         blob, meta = pack(res, k, p)
         _blobs.append(blob)
         return meta
+
+    if name == "auto_tone":
+        return ENGINE.auto_tone(_params(body.get("params")))
 
     if name == "render":
         p = _params(body.get("params"))

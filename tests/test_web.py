@@ -44,6 +44,41 @@ def params(image, tmp_path):
 
 # ── engine ───────────────────────────────────────────────────────────
 
+def test_a_bigger_budget_brings_the_preview_closer_to_true_scale(params):
+    """The fit view holds ink coverage and magnifies texture by 1/k. Spending
+    more marks buys a smaller magnification."""
+    e = Engine()
+    _, small = e.preview(params, budget=8_000)
+    _, large = e.preview(params, budget=90_000)
+    assert small < large <= 1.0
+
+
+def test_the_coarse_pass_keeps_its_own_budget(params):
+    """Coarse runs behind a slider drag and must stay inside a frame."""
+    e = Engine()
+    _, asked = e.preview(params, coarse=True, budget=90_000)
+    _, stock = e.preview(params, coarse=True)
+    assert asked == stock
+
+
+def test_auto_tone_holds_the_export_count(params):
+    e = Engine()
+    before = e.preview(params)[0].stats["full_target"]
+    t = e.auto_tone(params)
+    tuned = replace(params, black_point=t["black_point"],
+                    white_point=t["white_point"], gamma=t["gamma"])
+    after = e.preview(tuned)[0].stats["full_target"]
+    assert after == pytest.approx(before, rel=0.01)
+
+
+def test_the_canvas_readout_ignores_a_stale_height(params):
+    """canvas_h_in is never read while the aspect is locked, so it can hold
+    anything; the readout has to resolve the canvas instead."""
+    e = Engine()
+    res, _ = e.preview(replace(params, lock_aspect=True, canvas_h_in=999.0))
+    assert res.stats["full_h_in"] == pytest.approx(
+        params.canvas_w_in * 180 / 240, rel=1e-6)
+
 def test_coarse_is_cheaper_than_full(params):
     e = Engine()
     coarse, _ = e.preview(params, coarse=True)

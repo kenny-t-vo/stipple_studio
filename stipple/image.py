@@ -92,15 +92,23 @@ def prepare(
     Blur first, so levels and gamma operate on clean values. Otherwise sensor
     noise is amplified into the density field.
     """
-    v = np.asarray(luma, dtype=np.float32)
+    v = _levels(_source(luma, invert, pre_blur), black_point, white_point, contrast)
+    # Darkness curve (matches the original script's convention).
+    return np.clip(1.0 - np.power(v, float(gamma)), 0.0, 1.0)
 
+
+def _source(luma: np.ndarray, invert: bool, pre_blur: float) -> np.ndarray:
+    """Brightness, inverted and blurred. Everything before the tone curve."""
+    v = np.asarray(luma, dtype=np.float32)
     if invert:
         v = 1.0 - v
-
     if pre_blur > 0:
         v = gaussian_filter(v, sigma=float(pre_blur), mode="nearest")
+    return v
 
-    # Levels
+
+def _levels(v: np.ndarray, black_point: float, white_point: float,
+            contrast: float) -> np.ndarray:
     span = max(white_point - black_point, 1e-6)
     v = np.clip((v - black_point) / span, 0.0, 1.0)
 
@@ -109,9 +117,59 @@ def prepare(
         c = float(np.clip(contrast, -0.999, 0.999))
         k = (1.0 + c) / (1.0 - c)
         v = np.clip((v - 0.5) * k + 0.5, 0.0, 1.0)
+    return v
 
-    # Darkness curve (matches the original script's convention).
-    return np.clip(1.0 - np.power(v, float(gamma)), 0.0, 1.0)
+
+#: Gamma is clamped to the range the interface offers.
+GAMMA_RANGE = (0.2, 8.0)
+
+
+def auto_levels(
+    luma: np.ndarray,
+    *,
+    invert: bool = False,
+    pre_blur: float = 0.0,
+    black_point: float = 0.0,
+    white_point: float = 1.0,
+    contrast: float = 0.0,
+    gamma: float = 2.2,
+    clip: float = 0.5,
+) -> tuple[float, float, float]:
+    """Black point, white point and gamma from the histogram.
+
+    The points come from a percentile clip, the usual stretch. Gamma is then
+    re-solved to hold the mean darkness the current settings produce, which is
+    what stops the button from changing how heavy the drawing is: density is
+    linear in darkness, so mean darkness is the mark count. Only the
+    distribution of tone moves.
+    """
+    v = _source(luma, invert, pre_blur)
+    target = float(np.clip(
+        1.0 - np.power(_levels(v, black_point, white_point, contrast),
+                       float(gamma)), 0.0, 1.0).mean())
+
+    lo, hi = (float(x) for x in np.percentile(v, [clip, 100.0 - clip]))
+    if hi - lo < 1e-3:                  # flat image, nothing to stretch
+        lo, hi = 0.0, 1.0
+    lo = min(max(lo, 0.0), 0.95)
+    hi = min(max(hi, lo + 0.05), 1.0)
+
+    # Solve on a histogram of the levelled value: 256 terms a step instead of
+    # every pixel, and the curve is far smoother than the bin width.
+    counts, edges = np.histogram(_levels(v, lo, hi, contrast), bins=256,
+                                 range=(0.0, 1.0))
+    mid = ((edges[:-1] + edges[1:]) * 0.5).astype(np.float64)
+    weight = counts / max(counts.sum(), 1)
+
+    # Darkness rises monotonically with gamma, so bisection is exact enough.
+    g_lo, g_hi = GAMMA_RANGE
+    for _ in range(40):
+        g = 0.5 * (g_lo + g_hi)
+        if 1.0 - float((weight * mid ** g).sum()) < target:
+            g_lo = g
+        else:
+            g_hi = g
+    return lo, hi, round(0.5 * (g_lo + g_hi), 3)
 
 
 def downscale(arr: np.ndarray, max_edge: int) -> np.ndarray:

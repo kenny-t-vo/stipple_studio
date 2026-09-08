@@ -72,6 +72,28 @@ their true size, so ink coverage, and with it tone, matches the export to
 within two percent. While a slider moves you get a coarse pass at about 50ms;
 on release it refines. Click any number to type an exact value.
 
+## Tone
+
+**auto tone** sets the black and white points from a percentile clip of the
+histogram, then re-solves gamma so mean darkness is unchanged. Mean darkness
+is the mark count -- density is linear in it -- so the button never makes the
+drawing heavier or lighter. It only redistributes tone. On the reference image
+it moved the count by 0.05% and widened the range in use by 10%.
+
+## The preview
+
+The fit view holds ink coverage exactly and magnifies the grain by 1/scale, so
+on a large canvas it reads coarser than the print. The stats line says by how
+much. The detail window is always actual size.
+
+`preview marks` trades time for a fit view closer to true scale: at 21in and
+0.225 density, 26,000 marks gives 2.9x magnification and 100,000 gives 1.5x.
+It is a view setting and never reaches the file, so it is not saved in presets.
+
+Raising `max density` to make the preview look denser works against this -- it
+puts more ink on the preview but magnifies the grain further, 5.3x at 0.75 --
+and it does change the export.
+
 ## Samplers
 
 | | spacing uniformity | character |

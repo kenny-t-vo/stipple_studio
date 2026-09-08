@@ -30,7 +30,8 @@ window.STIPPLE_SHELL = (() => {
     init: () => getJSON('/api/init'),
 
     async preview(params, view, coarse, crop) {
-      const r = await postJSON('/api/preview', {params, view, coarse, crop});
+      const r = await postJSON('/api/preview',
+        {params, view, coarse, crop, budget: params.preview_budget});
       return {meta: JSON.parse(r.headers.get('X-Stipple-Meta')),
               buf: await r.arrayBuffer()};
     },
@@ -51,6 +52,8 @@ window.STIPPLE_SHELL = (() => {
       const r = await getJSON('/api/browse?save=1&kind=svg');
       return r.path || null;
     },
+
+    autoTone: params => postJSON('/api/autotone', {params}).then(r => r.json()),
 
     render: params => postJSON('/api/render', {params}).then(r => r.json()),
 

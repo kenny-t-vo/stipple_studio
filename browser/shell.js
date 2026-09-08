@@ -116,7 +116,8 @@ window.STIPPLE_SHELL = (() => {
 
     async preview(params, view, coarse, crop) {
       const {meta, buffers} = await send(
-        'preview', {params, view, coarse, crop}, {blobs: 1});
+        'preview', {params, view, coarse, crop, budget: params.preview_budget},
+        {blobs: 1});
       return {meta, buf: buffers[0]};
     },
 
@@ -142,6 +143,8 @@ window.STIPPLE_SHELL = (() => {
       return `${WORK}/${name.endsWith('.svg') || name.endsWith('.svgz')
                         ? name : name + '.svg'}`;
     },
+
+    autoTone: params => send('auto_tone', {params}).then(r => r.meta),
 
     async render(params) {
       const {meta, buffers} = await send('render', {params});
