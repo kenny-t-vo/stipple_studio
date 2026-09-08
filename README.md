@@ -21,6 +21,29 @@ From a terminal:
 ~/.local/share/stipple/venv/bin/python web/server.py
 ```
 
+## In a browser
+
+<https://kenny-t-vo.github.io/stipple_studio/>
+
+The same pipeline, running in the page. Pyodide fetches Python, numpy and
+pillow on the first visit, about 10MB, and caches them. Pick an image, tweak,
+export; nothing is uploaded and nothing is installed.
+
+It is slower than the desktop app. WASM numpy has no threads, and the browser
+build leaves scipy out because it alone is 13MB against numpy's 2.8MB. A
+refined preview takes about 3 seconds against the desktop's 0.3, and the
+refined preview caps relaxation at 8 passes, where evenness stops improving.
+Exports are not capped.
+
+Large TIFFs are the reason to keep the desktop app. Pyodide's heap tops out at
+4GB, so a full-resolution 16-bit scan belongs there.
+
+```bash
+python3 browser/build.py        # writes dist/
+```
+
+A push to `main` builds and publishes it.
+
 ## Setup
 
 ```bash
@@ -119,9 +142,15 @@ the source and groups marks into one path per quantised colour.
 
 ```
 stipple/     image · density · sample · flow · strokes · render · params · core · cli
-web/         server · engine · index.html · app.css · app.js
+             filters · spatial   (numpy stand-ins for the scipy calls)
+web/         server · engine · shell · index.html · app.css · app.js
+browser/     worker · bridge · shell · build
 presets/     tests/
 ```
+
+`web/app.js` is the interface for both builds. It reaches everything outside
+the page through `STIPPLE_SHELL`, which is an HTTP server on the desktop and a
+Pyodide worker in the browser.
 
 ## Licence
 

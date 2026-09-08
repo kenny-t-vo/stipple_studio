@@ -129,9 +129,11 @@ class Engine:
 
     def preview(self, p: Params, view: str = "fit", crop=None, coarse: bool = False):
         q = self.COARSE if coarse else self.FULL
+        # Independent, so a build can cap one without the other.
         if q["relax"] is not None:
-            p = replace(p, relax_iterations=min(p.relax_iterations, q["relax"]),
-                        flow_diffusion=min(p.flow_diffusion, q["diffusion"]))
+            p = replace(p, relax_iterations=min(p.relax_iterations, q["relax"]))
+        if q["diffusion"] is not None:
+            p = replace(p, flow_diffusion=min(p.flow_diffusion, q["diffusion"]))
 
         if view == "detail" and crop:
             # True scale: full canvas, small window onto it.

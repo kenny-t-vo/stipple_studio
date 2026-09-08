@@ -66,17 +66,23 @@ def test_filters_reject_other_edge_modes():
 # ── neighbour index ──────────────────────────────────────────────────
 
 @needs_scipy
-def test_knn_within_matches_the_tree(field):
-    radius = np.random.default_rng(2).uniform(1.0, 6.0, size=len(field))
-    tree = spatial._KDTreeIndex(field).knn_within(radius, 10)
-    grid = spatial._GridIndex(field).knn_within(radius, 10)
+@pytest.mark.parametrize("radius,label", [(6.0, "over k"), (1.2, "under k")])
+def test_knn_within_matches_the_tree(field, radius, label):
+    """Each row holds the same neighbours as the tree's.
 
-    # Padding sits in the same slots, and the neighbours found are the same
-    # ones in the same order. Distances differ by at most an ulp.
-    finite = np.isfinite(tree[0])
-    assert np.array_equal(finite, np.isfinite(grid[0]))
-    assert np.array_equal(tree[1][finite], grid[1][finite])
-    assert np.allclose(tree[0][finite], grid[0][finite], rtol=0, atol=1e-12)
+    Not the same order: below k neighbours in range the grid leaves them in
+    the order it found them, since relax only ever sums a row. The two radii
+    cover both branches -- 6.0 puts more than k in range for most points and
+    takes the sorting path, 1.2 puts fewer in range and skips it.
+    """
+    r = np.random.default_rng(2).uniform(0.5 * radius, radius, size=len(field))
+    td, ti = spatial._KDTreeIndex(field).knn_within(r, 10)
+    gd, gi = spatial._GridIndex(field).knn_within(r, 10)
+
+    assert np.array_equal(np.isfinite(td), np.isfinite(gd)), label
+    for a, b, fa in zip(ti, gi, np.isfinite(td)):
+        assert sorted(a[fa].tolist()) == sorted(b[fa].tolist()), label
+    assert np.allclose(np.sort(td, axis=1), np.sort(gd, axis=1), rtol=0, atol=1e-12)
 
 
 @needs_scipy

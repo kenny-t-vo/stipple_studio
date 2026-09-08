@@ -82,6 +82,10 @@ let seq = 0;
 let inflight = false;
 let pending = null;
 
+// Everything outside the page goes through the shell: a local HTTP server
+// on the desktop, a Pyodide worker in the browser build.
+const SHELL = window.STIPPLE_SHELL;
+
 const $ = s => document.querySelector(s);
 const el = (tag, cls) => { const n = document.createElement(tag); if (cls) n.className = cls; return n; };
 
@@ -174,7 +178,7 @@ function makeRow(r) {
     const btn = el('button', 'btn'); btn.type = 'button'; btn.textContent = 'choose…';
     const head = el('div', 'row'); head.append(lab, btn);
     const val = el('div', 'path'); val.id = 'p_' + r.k;
-    btn.addEventListener('click', () => pickFile(r.k, r.type === 'savefile'));
+    btn.addEventListener('click', () => pickFile(r.k));
     row.append(head, val);
     return row;
   }
@@ -292,11 +296,10 @@ async function run(coarse) {
   const mine = ++seq;
   status(coarse ? 'drawing…' : 'refining…', 'busy');
   try {
-    const fit = await post('/api/preview', {params: P, view: 'fit', coarse});
+    const fit = await SHELL.preview(P, 'fit', coarse, null);
     if (mine === seq) { meta = fit.meta; drawFit(fit); }
     if (!coarse) {
-      const det = await post('/api/preview',
-        {params: P, view: 'detail', coarse: false, crop: cropRect()});
+      const det = await SHELL.preview(P, 'detail', false, cropRect());
       if (mine === seq) { detailMeta = det.meta; drawDetail(det); }
       await loadHistogram();
     }
@@ -307,23 +310,6 @@ async function run(coarse) {
     inflight = false;
     if (pending !== null) { const c = pending; pending = null; run(c); }
   }
-}
-
-async function post(url, body) {
-  const r = await fetch(url, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(body),
-  });
-  if (!r.ok) throw new Error(await r.text());
-  const m = JSON.parse(r.headers.get('X-Stipple-Meta'));
-  return {meta: m, buf: await r.arrayBuffer()};
-}
-
-async function getJSON(url) {
-  const r = await fetch(url);
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
 }
 
 // ── drawing ──────────────────────────────────────────────────────────
@@ -509,8 +495,7 @@ async function loadHistogram() {
   if (!P.in_path) return;
   let bins;
   try {
-    bins = (await getJSON('/api/histogram?path=' + encodeURIComponent(P.in_path) +
-                          '&paper=' + encodeURIComponent(P.paper))).bins;
+    bins = await SHELL.histogram(P.in_path, P.paper);
   } catch { return; }
   const c = $('#hist'); if (!c) return;
   const dpr = window.devicePixelRatio || 1;
@@ -534,19 +519,20 @@ async function loadHistogram() {
 
 // ── file pickers, export, presets ────────────────────────────────────
 
-async function pickFile(key, save) {
+async function pickFile(key) {
   try {
-    const r = await getJSON('/api/browse?save=' + (save ? 1 : 0) +
-                            '&kind=' + (key === 'in_path' ? 'image' : 'svg'));
-    if (!r.path) return;
-    P[key] = r.path;
     if (key === 'in_path') {
-      const s = await getJSON('/api/source?path=' + encodeURIComponent(r.path) +
-                              '&paper=' + encodeURIComponent(P.paper));
+      const s = await SHELL.pickInput(P.paper);
+      if (!s) return;
+      P.in_path = s.path;
       if (P.lock_aspect) P.canvas_h_in = P.canvas_w_in * s.height / s.width;
       if (!P.out_path || P.out_path === DEFAULTS.out_path) {
-        P.out_path = r.path.replace(/\.[^.\/]+$/, '') + '.stipple.svg';
+        P.out_path = s.path.replace(/\.[^.\/]+$/, '') + '.stipple.svg';
       }
+    } else {
+      const path = await SHELL.pickOutput(P.out_path);
+      if (!path) return;
+      P.out_path = path;
     }
     changed(false);
   } catch (e) { status(String(e.message || e), 'err'); }
@@ -557,10 +543,7 @@ async function doExport() {
   b.disabled = true;
   status('exporting…', 'busy');
   try {
-    const r = await fetch('/api/render', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({params: P}),
-    }).then(async x => { if (!x.ok) throw new Error(await x.text()); return x.json(); });
+    const r = await SHELL.render(P);
     status(`wrote ${r.name} — ${r.marks.toLocaleString()} marks, ${r.mb} MB, ${r.secs}s`);
   } catch (e) {
     status(String(e.message || e), 'err');
@@ -569,13 +552,8 @@ async function doExport() {
 
 async function preset(save) {
   try {
-    const r = await fetch('/api/preset', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({save, params: P}),
-    });
-    if (!r.ok) throw new Error(await r.text());
-    const j = await r.json();
-    if (!j.path) return;
+    const j = save ? await SHELL.presetSave(P) : await SHELL.presetLoad();
+    if (!j || !j.name) return;
     if (!save) { Object.assign(P, j.params); changed(false); }
     status((save ? 'saved ' : 'loaded ') + j.name);
   } catch (e) { status(String(e.message || e), 'err'); }
@@ -584,7 +562,7 @@ async function preset(save) {
 // ── boot ─────────────────────────────────────────────────────────────
 
 (async function init() {
-  const info = await getJSON('/api/init');
+  const info = await SHELL.init();
   DEFAULTS = info.defaults;
   P = Object.assign({}, info.defaults, info.last || {});
   $('#ver').textContent = info.version;
@@ -599,6 +577,11 @@ async function preset(save) {
     changed(false);
   });
   $('#cv').addEventListener('click', moveDetail);
+
+  const shell = document.querySelector('.shell');
+  const drawer = (open) => shell.dataset.drawer = open ? 'open' : 'shut';
+  $('#drawer-open').addEventListener('click', () => drawer(true));
+  $('#drawer-close').addEventListener('click', () => drawer(false));
   window.addEventListener('resize', () => { if (meta) schedule(false); });
 
   if (P.in_path) { await loadHistogram(); run(false); }

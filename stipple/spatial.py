@@ -120,6 +120,8 @@ class _GridIndex:
         return np.concatenate(qi_out), np.concatenate(pi_out)
 
     def _dist(self, q: np.ndarray, qi: np.ndarray, pi: np.ndarray):
+        # Column at a time: q[qi] gathers both at once but leaves strided
+        # columns, and the arithmetic on those measured twice as slow.
         # sqrt of the sum of squares rather than hypot: 1.6x faster measured,
         # and canvas coordinates are nowhere near hypot's overflow range.
         dx = q[qi, 0] - self.data[pi, 0]
@@ -158,14 +160,18 @@ class _GridIndex:
             if q.size == 0:
                 continue
 
-            # Sorted by query then distance, so position within a run is rank.
-            o = np.lexsort((d, q))
-            q, pi, d = q[o], pi[o], d[o]
-            head = np.ones(q.size, dtype=bool)
-            head[1:] = q[1:] != q[:-1]
-            start = np.nonzero(head)[0]
-            rank = np.arange(q.size) - np.repeat(start, np.diff(np.append(start, q.size)))
+            # `_gather` emits candidates grouped by query and in ascending
+            # query order, so counting alone gives each one its slot.
+            counts = np.bincount(q, minlength=n)
+            if counts.max() > k:
+                # Only here does order matter: some query has more neighbours
+                # inside its radius than there are slots, and the far ones
+                # have to be the ones that lose. Sorting leaves the queries
+                # grouped, so the slot arithmetic below still holds.
+                o = np.lexsort((d, q))
+                q, pi, d = q[o], pi[o], d[o]
 
+            rank = np.arange(q.size) - (np.cumsum(counts) - counts)[q]
             m = rank < k
             dist[q[m], rank[m]] = d[m]
             idx[q[m], rank[m]] = pi[m]
@@ -221,12 +227,17 @@ class _GridIndex:
             g, pi = g[keep], pi[keep]
             if g.size == 0:
                 continue
+
+            # One tolist() and plain slices. np.split is the obvious way to cut
+            # this up and costs more than the rest of the query together: it
+            # builds an array view per point, which at 26k points measured as a
+            # third of a whole preview.
             o = np.argsort(g, kind="stable")
-            g, pi = g[o], pi[o]
+            flat = pi[o].tolist()
             counts = np.bincount(g, minlength=len(q))
-            parts = np.split(pi, np.cumsum(counts)[:-1])
+            ends = np.cumsum(counts)
             for j in sel:
-                out[j] = parts[j].tolist()
+                out[j] = flat[int(ends[j] - counts[j]):int(ends[j])]
         return out
 
 

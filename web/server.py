@@ -109,7 +109,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if u.path in ("/", "/index.html"):
                 return self._static("index.html")
-            if u.path in ("/app.css", "/app.js"):
+            if u.path in ("/app.css", "/app.js", "/shell.js"):
                 return self._static(u.path.lstrip("/"))
 
             if u.path == "/api/init":
@@ -304,4 +304,5 @@ def serve(port: int | None = None, open_window: bool = True):
 
 if __name__ == "__main__":
     args = sys.argv[1:]
-    serve(open_window="--no-window" not in args)
+    port = int(args[args.index("--port") + 1]) if "--port" in args else None
+    serve(port=port, open_window="--no-window" not in args)
