@@ -23,7 +23,7 @@ From a terminal:
 
 ## In a browser
 
-<https://kenny-t-vo.github.io/stipple_studio/>
+<https://kenny-t-vo.github.io/stipple-svg/>
 
 The same pipeline, running in the page. Pyodide fetches Python, numpy and
 pillow on the first visit, about 10MB, and caches them. Pick an image, tweak,
