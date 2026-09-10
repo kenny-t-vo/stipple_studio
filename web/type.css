@@ -1,0 +1,131 @@
+/* ═══════════════════════════════════════════════════════════════════
+   kenny vo — shared type and colour. loaded by every page.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Redaction 35, Forest Young & Jeremy Mickel, SIL OFL 1.1.
+   Self-hosted; licence in assets/fonts/LICENSE.txt */
+@font-face{
+  font-family:"Redaction 35";
+  src:url("fonts/redaction-35-400.woff2") format("woff2");
+  font-weight:400;
+  font-style:normal;
+  font-display:swap;
+}
+
+/* Plantin MT Pro, only if the reader already has it installed. Adobe Fonts
+   licenses it for desktop use, so no file is served from here — local() or
+   Times. Chrome exposes only the "Plantin MT Pro" family, not the Light and
+   Semibold subfamilies, so the faces are named by PostScript name and hung
+   on weights: 400 is Light, 600 is Semibold. */
+@font-face{
+  font-family:"Plantin";
+  src:local("PlantinMTPro-Light");
+  font-weight:400; font-style:normal;
+}
+@font-face{
+  font-family:"Plantin";
+  src:local("PlantinMTPro-LightItalic");
+  font-weight:400; font-style:italic;
+}
+@font-face{
+  font-family:"Plantin";
+  src:local("PlantinMTPro-Semibold");
+  font-weight:600; font-style:normal;
+}
+
+:root{
+  /* ── ground and ink ───────────────────────────────────────────── */
+  --bg:#fff;
+  --fg:#111;
+  --dim:#6f6f6f;      /* secondary copy */
+  --faint:#9a9a9a;    /* labels */
+  --rule:#dcdcdc;     /* hairline */
+  --rule2:#111;       /* structural rule */
+  --wash:#f2f2f7;     /* reading ground, empty wells */
+
+  /* browser-default link colours: blue = unvisited, purple = visited */
+  --blue:#0000ee;
+  --purple:#551a8b;
+
+  /* ── families ─────────────────────────────────────────────────────
+     display: Redaction 35, shipped with the site.
+     body:    Plantin MT Pro, else Times New Roman (drawn from Plantin).
+     figures use the body face.                                          */
+  --display:"Redaction 35","Times New Roman",Times,serif;
+  --body:"Plantin","Plantin MT Pro","Times New Roman",Times,
+         "Liberation Serif","Hiragino Mincho ProN","Yu Mincho",serif;
+
+  /* ── six steps ────────────────────────────────────────────────────
+     t1  the one large thing on a screen      display
+     t2  book titles, section heads           display
+     t3  prose (body default)                 body
+     t4  secondary links and copy             body
+     t5  figures: folios, counts              body
+     t6  labels and key hints                 body                     */
+  --t1:22px;
+  --t2:16px;
+  --t3:14px;
+  --t4:12.5px;
+  --t5:11px;
+  --t6:10.5px;
+
+  /* ── spacing ──────────────────────────────────────────────────── */
+  --s1:6px;
+  --s2:12px;
+  --s3:22px;
+  --s4:40px;
+  --s5:72px;
+
+  /* ── the hover highlight ──────────────────────────────────────────
+     Height is set in em and centred on the text, NOT trimmed off the
+     line box — the viewer chrome runs at line-height 1 and the index
+     at 1.35 and 1.9, so anything measured against the line box comes
+     out a different size in each place. In em it is one scale
+     everywhere. Bleed is breathing room on the left and right.       */
+  --hl-height:1.55em;
+  --hl-bleed:.16em;
+
+  /* body tracking. -.01em is -10 in indesign's 1/1000 em units.
+     the display face is not affected: every rule using --display
+     declares its own letter-spacing. */
+  --track:-.01em;
+}
+
+*{ box-sizing:border-box; margin:0; padding:0; }
+
+body{
+  background:var(--bg);
+  color:var(--fg);
+  font:var(--t3)/1.5 var(--body);
+  letter-spacing:var(--track);
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+
+a{ color:var(--blue); text-decoration:underline; text-underline-offset:2px;
+   text-decoration-thickness:1px; }
+a:visited{ color:var(--purple); }
+::selection{ background:var(--blue); color:#fff; }
+
+/* The one accent move: invert whatever you are about to open. The band is an
+   absolutely positioned pseudo-element rather than padding or a box-shadow.
+   Padding reflowed the line; a box-shadow's spread is uniform, so it could not
+   be made shorter vertically than it is wide. This can, and still moves
+   nothing on the page. */
+.invert{ position:relative; justify-self:start; }
+.invert::before{
+  content:"";
+  position:absolute;
+  left:calc(-1 * var(--hl-bleed));
+  right:calc(-1 * var(--hl-bleed));
+  top:50%;
+  height:var(--hl-height);
+  transform:translateY(-50%);
+  background:var(--blue);
+  z-index:-1;
+  opacity:0;
+}
+.invert:hover::before, .invert:focus-visible::before{ opacity:1; }
+.invert:hover, .invert:focus-visible{
+  color:#fff; text-decoration:none; outline:none;
+}

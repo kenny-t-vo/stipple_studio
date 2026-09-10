@@ -1,78 +1,95 @@
-/* stipple — elevated early web.
-   Materials: white ground, Times for language, mono for quantity, hairlines
-   for every separation. No shadows, gradients, or radii except on images. */
+/* stipple — the site's type and colour, applied to a tool.
+   type.css holds the tokens and loads first; nothing below restates one.
+   Redaction 35 for the display steps, Plantin (else Times) for everything
+   else, including figures, per that file. Hairlines do all the separating:
+   no shadows, gradients, or radii. */
 
 :root{
-  --bg:#fff;
-  --fg:#111;
-  --dim:#6f6f6f;
-  --faint:#9a9a9a;
-  --rule:#dcdcdc;
-  --rule2:#111;
-  --wash:#f2f2f7;
-  --blue:#0000ee;      /* current / interactive */
-  --purple:#551a8b;    /* already done */
+  /* ── structure ───────────────────────────────────────────────── */
+  --pane:352px;          /* control column */
+  --detail:268px;        /* true-scale readout column */
+  --drawer:340px;        /* the control column once it overlays */
+  --hair:1px;            /* every separation on the page */
 
-  --serif:"Times New Roman",Times,"Liberation Serif",
-          "Hiragino Mincho ProN","Yu Mincho",serif;
-  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  /* ── control geometry ─────────────────────────────────────────
+     Physical sizes of the widgets, not spacing. Kept apart from the
+     s-scale because a slider thumb is not a margin.               */
+  --ctl:15px;            /* slider box, colour swatch height */
+  --thumb-w:7px;
+  --thumb-h:11px;
+  --box:9px;             /* checkbox */
+  --swatch:26px;
+  --hist:38px;           /* histogram canvas */
+  --field:74px;          /* inline numeric field */
+  --crop:118px;          /* detail canvas beside its numbers, narrow screens */
+  --kv-min:150px;
 
-  --t1:30px;    /* the single large element */
-  --t2:18px;    /* panel headings */
-  --t3:14px;    /* prose, primary links */
-  --t4:12.5px;  /* list items, secondary copy */
-  --t5:11px;    /* numeric data */
-  --t6:10.5px;  /* labels, key hints */
+  /* one step below the site's s1, for the inside of controls */
+  --s0:3px;
 
-  --pane:352px;
-  --gut:22px;
+  /* ── tracking ─────────────────────────────────────────────────
+     type.css tracks the body face; these are the two places that
+     override it. A serif needs less label tracking than a mono.   */
+  --track-label:.09em;
+  --track-display:-.012em;
+
+  /* Box top to cap top for Redaction 35 at leading 1.06, from canvas
+     metrics: half-leading -1.84px plus (font ascent 20 - ink ascent 15.4)
+     = 2.76px at 22px. In em so it survives a size change. */
+  --cap-seat:-.126em;
+
+  /* superior figures: the version tag, and the section toggle */
+  --sup-v:.62em;
+  --sup-tog:.34em;
+
+  /* gap between text and a line drawn near it: underlines here match the
+     one type.css sets on a, and the focus ring uses the same distance */
+  --offset:2px;
+
+  --slide:.18s;          /* the drawer, and nothing else */
 }
 
-*{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden}
-body{
-  background:var(--bg);color:var(--fg);
-  font:var(--t3)/1.45 var(--serif);
-  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
-  overflow:hidden;
-}
-::selection{background:var(--blue);color:#fff}
 
-.lbl{font:var(--t6)/1 var(--serif);letter-spacing:.09em;color:var(--faint)}
-.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.lbl{font:var(--t6)/1 var(--body);letter-spacing:var(--track-label);
+  color:var(--faint)}
 
 /* ── shell ─────────────────────────────────────────────────────────── */
 
 .shell{display:grid;grid-template-columns:var(--pane) 1fr;height:100vh}
 
 .pane{
-  border-right:1px solid var(--rule2);
+  border-right:var(--hair) solid var(--rule2);
   display:flex;flex-direction:column;min-height:0;
 }
-.pane__head{padding:var(--gut) var(--gut) 13px}
-.pane__body{overflow-y:auto;overflow-x:hidden;flex:1;padding:0 var(--gut) 40px}
-.pane__foot{padding:13px var(--gut)}
+.pane__head{padding:var(--s3) var(--s3) var(--s2)}
+.pane__body{overflow-y:auto;overflow-x:hidden;flex:1;
+  padding:0 var(--s3) var(--s4)}
+.pane__foot{padding:var(--s2) var(--s3)}
 
 h1{
-  font:var(--t1)/1.06 var(--serif);font-weight:400;letter-spacing:-.012em;
-  margin-top:-.201em;                    /* seat cap height, not the box */
+  font:var(--t1)/1.06 var(--display);font-weight:400;
+  letter-spacing:var(--track-display);
+  margin-top:var(--cap-seat);          /* seat cap height, not the box */
 }
-h1 .v{font:var(--t6)/1 var(--mono);color:var(--faint);letter-spacing:0;
-  vertical-align:.62em;margin-left:7px}
+h1 .v{font:var(--t6)/1 var(--body);color:var(--faint);letter-spacing:0;
+  font-variant-numeric:tabular-nums;
+  vertical-align:var(--sup-v);margin-left:var(--s1)}
 
 /* ── sections ──────────────────────────────────────────────────────── */
 
-.sec{border-top:1px solid var(--rule);padding:15px 0 19px}
+.sec{border-top:var(--hair) solid var(--rule);padding:var(--s2) 0 var(--s3)}
 .sec:first-child{border-top:0}
 .sec__h{
-  font:var(--t2)/1.06 var(--serif);font-weight:400;
-  margin:0 0 11px;
+  font:var(--t2)/1.1 var(--display);font-weight:400;
+  letter-spacing:var(--track-display);
+  margin:0 0 var(--s2);
 }
 .sec--off .sec__body{display:none}
 .sec__h .tog{
-  float:right;font:var(--t6)/1 var(--serif);letter-spacing:.09em;
+  float:right;font:var(--t6)/1 var(--body);letter-spacing:var(--track-label);
   color:var(--blue);cursor:pointer;text-decoration:underline;
-  text-underline-offset:2px;vertical-align:.34em;
+  text-underline-offset:var(--offset);vertical-align:var(--sup-tog);
 }
 .sec__h .tog:hover{color:var(--purple)}
 
@@ -80,19 +97,19 @@ h1 .v{font:var(--t6)/1 var(--mono);color:var(--faint);letter-spacing:0;
 
 .row{
   display:grid;grid-template-columns:1fr auto;align-items:baseline;
-  gap:9px;padding:5px 0 2px;
+  gap:var(--s1);padding:var(--s0) 0;
 }
 .row__l{font-size:var(--t4);color:var(--dim)}
-.row__v{font:var(--t5)/1.5 var(--mono);font-variant-numeric:tabular-nums;
+.row__v{font:var(--t5)/1.5 var(--body);font-variant-numeric:tabular-nums;
   text-align:right;color:var(--fg)}
 .row__v[data-edit]{cursor:text}
 .row__v[data-edit]:hover{color:var(--blue)}
-.row__v input{font:var(--t5)/1.5 var(--mono);text-align:right;width:74px;
-  border-bottom-color:var(--blue);padding:0}
+.row__v input{font:var(--t5)/1.5 var(--body);font-variant-numeric:tabular-nums;
+  text-align:right;width:var(--field);border-bottom-color:var(--blue);padding:0}
 
 /* A full path is three wrapped lines of noise. Show the name; keep the path
    in the tooltip and readable on hover. */
-.path{font:var(--t5)/1.5 var(--mono);color:var(--dim);
+.path{font:var(--t5)/1.5 var(--body);color:var(--dim);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;
   text-align:left;max-width:100%}
 .row--full{grid-template-columns:1fr}
@@ -102,103 +119,116 @@ h1 .v{font:var(--t6)/1 var(--mono);color:var(--faint);letter-spacing:0;
 input,button,select{font-size:var(--t4)}
 
 input[type=range]{
-  grid-column:1/-1;width:100%;height:15px;margin:1px 0 3px;
+  grid-column:1/-1;width:100%;height:var(--ctl);margin:0 0 var(--s0);
   -webkit-appearance:none;appearance:none;background:transparent;display:block;
 }
 input[type=range]::-webkit-slider-runnable-track{
-  height:1px;background:var(--rule);border:0}
+  height:var(--hair);background:var(--rule);border:0}
 input[type=range]::-webkit-slider-thumb{
-  -webkit-appearance:none;width:7px;height:11px;background:var(--fg);
-  border:0;margin-top:-5px}
+  -webkit-appearance:none;width:var(--thumb-w);height:var(--thumb-h);
+  background:var(--fg);border:0;
+  /* centre the thumb on the track rather than on its own box */
+  margin-top:calc((var(--hair) - var(--thumb-h)) / 2)}
 input[type=range]:focus{outline:0}
 input[type=range]:focus::-webkit-slider-thumb{background:var(--blue)}
 
 input[type=text],input[type=number],select{
-  font:var(--t4)/1.4 var(--serif);color:var(--fg);background:var(--bg);
-  border:0;border-bottom:1px solid var(--rule);padding:2px 0;width:100%;
+  font:var(--t4)/1.4 var(--body);color:var(--fg);background:var(--bg);
+  border:0;border-bottom:var(--hair) solid var(--rule);padding:var(--s0) 0;
+  width:100%;
 }
 input[type=text]:focus,input[type=number]:focus,select:focus{
   outline:0;border-bottom-color:var(--blue)}
-input.mono{font-family:var(--mono);font-size:var(--t5)}
 input[type=color]{
-  -webkit-appearance:none;appearance:none;border:1px solid var(--rule);
-  width:26px;height:15px;padding:0;background:none;cursor:pointer}
+  -webkit-appearance:none;appearance:none;
+  border:var(--hair) solid var(--rule);
+  width:var(--swatch);height:var(--ctl);padding:0;background:none;cursor:pointer}
 input[type=color]::-webkit-color-swatch-wrapper{padding:0}
 input[type=color]::-webkit-color-swatch{border:0}
 
 /* ── the one accent move: invert the chosen cell ───────────────────── */
 
-.cells{display:flex;gap:0;margin:3px 0 2px}
+.cells{display:flex;gap:0;margin:var(--s0) 0}
 .cells button{
-  flex:1;font:var(--t6)/1 var(--serif);letter-spacing:.09em;
-  background:var(--bg);color:var(--fg);border:1px solid var(--rule);
-  border-right:0;padding:5px 0;cursor:pointer;
+  flex:1;font:var(--t6)/1 var(--body);letter-spacing:var(--track-label);
+  background:var(--bg);color:var(--fg);border:var(--hair) solid var(--rule);
+  border-right:0;padding:var(--s0) 0;cursor:pointer;
 }
-.cells button:last-child{border-right:1px solid var(--rule)}
+.cells button:last-child{border-right:var(--hair) solid var(--rule)}
 .cells button[aria-pressed=true]{
-  background:var(--blue);color:#fff;border-color:var(--blue)}
+  background:var(--blue);color:var(--bg);border-color:var(--blue)}
 
-.check{display:flex;align-items:baseline;gap:7px;padding:4px 0 2px;cursor:pointer;
-  position:relative}
+.check{display:flex;align-items:baseline;gap:var(--s1);padding:var(--s0) 0;
+  cursor:pointer;position:relative}
 /* Visually hidden, but still focusable. It must be positioned INSIDE .check:
    an absolutely positioned input with no positioned ancestor resolves against
    the initial containing block, and focusing it makes the browser scroll the
    document to wherever that lands -- which threw the whole layout off screen. */
-.check input{position:absolute;left:0;top:0;width:1px;height:1px;
+.check input{position:absolute;left:0;top:0;width:var(--hair);height:var(--hair);
   opacity:0;pointer-events:none;margin:0}
 .check .box{
-  width:9px;height:9px;border:1px solid var(--fg);flex:none;
-  position:relative;top:1px}
+  width:var(--box);height:var(--box);border:var(--hair) solid var(--fg);
+  flex:none;position:relative;top:var(--hair)}
 .check input:checked + .box{background:var(--blue);border-color:var(--blue)}
-.check input:focus-visible + .box{outline:1px solid var(--blue);outline-offset:2px}
+.check input:focus-visible + .box{outline:var(--hair) solid var(--blue);
+  outline-offset:var(--offset)}
 .check .t{font-size:var(--t4);color:var(--dim)}
 .check input:checked ~ .t{color:var(--fg)}
 
 /* ── histogram ─────────────────────────────────────────────────────── */
 
-.hist{display:block;width:100%;height:38px;border-bottom:1px solid var(--rule);
-  margin:2px 0 6px}
+.hist{display:block;width:100%;height:var(--hist);
+  border-bottom:var(--hair) solid var(--rule);margin:0 0 var(--s1)}
 
 /* ── buttons ───────────────────────────────────────────────────────── */
 
 .btn{
-  font:var(--t4)/1 var(--serif);color:var(--blue);background:none;border:0;
-  padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+  font:var(--t4)/1 var(--body);color:var(--blue);background:none;border:0;
+  padding:0;cursor:pointer;text-decoration:underline;
+  text-underline-offset:var(--offset)}
 .btn:hover{color:var(--purple)}
 .btn:disabled{color:var(--faint);cursor:default;text-decoration:none}
 .btn--strong{
-  border:1px solid var(--rule2);color:var(--fg);text-decoration:none;
-  padding:7px 0;width:100%;font-size:var(--t3)}
-.btn--strong:hover{background:var(--blue);border-color:var(--blue);color:#fff}
-.btn--strong:disabled{border-color:var(--rule);color:var(--faint);background:none}
+  border:var(--hair) solid var(--rule2);color:var(--fg);text-decoration:none;
+  padding:var(--s1) 0;width:100%;font-size:var(--t3)}
+.btn--strong:hover{background:var(--blue);border-color:var(--blue);
+  color:var(--bg)}
+.btn--strong:disabled{border-color:var(--rule);color:var(--faint);
+  background:none}
 
-.btnrow{display:flex;gap:14px;align-items:baseline;margin-top:8px}
+.btnrow{display:flex;gap:var(--s2);align-items:baseline;margin-top:var(--s1)}
 
 /* ── stage ─────────────────────────────────────────────────────────── */
 
 .stage{display:flex;flex-direction:column;min-width:0;min-height:0}
 .stage__head{
   display:flex;justify-content:space-between;align-items:baseline;
-  padding:var(--gut) var(--gut) 11px;border-bottom:1px solid var(--rule2)}
-.stage__body{flex:1;display:grid;grid-template-columns:1fr 268px;min-height:0}
+  padding:var(--s3) var(--s3) var(--s2);
+  border-bottom:var(--hair) solid var(--rule2)}
+.stage__body{flex:1;display:grid;grid-template-columns:1fr var(--detail);
+  min-height:0}
 .view{
   position:relative;min-width:0;min-height:0;
-  display:flex;align-items:center;justify-content:center;padding:var(--gut)}
+  display:flex;align-items:center;justify-content:center;padding:var(--s3)}
 .view canvas{max-width:100%;max-height:100%;display:block;cursor:crosshair}
 .view--detail{
-  border-left:1px solid var(--rule);flex-direction:column;
-  align-items:stretch;justify-content:flex-start;gap:9px}
-.view--detail canvas{width:100%;height:auto;border:1px solid var(--rule)}
+  border-left:var(--hair) solid var(--rule);flex-direction:column;
+  align-items:stretch;justify-content:flex-start;gap:var(--s1)}
+.view--detail canvas{width:100%;height:auto;
+  border:var(--hair) solid var(--rule)}
 
-.marquee{position:absolute;border:1px solid var(--blue);pointer-events:none}
+.marquee{position:absolute;border:var(--hair) solid var(--blue);
+  pointer-events:none}
 
 .stage__foot{
-  border-top:1px solid var(--rule2);padding:11px var(--gut);
-  display:flex;justify-content:space-between;align-items:baseline;gap:var(--gut)}
+  border-top:var(--hair) solid var(--rule2);padding:var(--s2) var(--s3);
+  display:flex;justify-content:space-between;align-items:baseline;
+  gap:var(--s3)}
 
-.stats{display:flex;gap:20px;align-items:baseline}
-.stat{display:flex;gap:6px;align-items:baseline}
-.stat b{font:var(--t5)/1 var(--mono);font-weight:400;font-variant-numeric:tabular-nums}
+.stats{display:flex;gap:var(--s3);align-items:baseline}
+.stat{display:flex;gap:var(--s1);align-items:baseline}
+.stat b{font:var(--t5)/1 var(--body);font-weight:400;
+  font-variant-numeric:tabular-nums}
 
 .status{font-size:var(--t4);color:var(--dim)}
 .status[data-busy=true]{color:var(--blue)}
@@ -208,10 +238,10 @@ input[type=color]::-webkit-color-swatch{border:0}
 
 /* key/value block: labels flush left against the rule, values flush right.
    Both edges are promises. */
-.kv{display:grid;grid-template-columns:1fr auto;gap:0 11px;
-  font-size:var(--t4);line-height:1.62;margin-top:2px}
+.kv{display:grid;grid-template-columns:1fr auto;gap:0 var(--s2);
+  font-size:var(--t4);line-height:1.62;margin-top:0}
 .kv dt{color:var(--dim)}
-.kv dd{font:var(--t5)/1.62 var(--mono);font-variant-numeric:tabular-nums;
+.kv dd{font:var(--t5)/1.62 var(--body);font-variant-numeric:tabular-nums;
   text-align:right}
 
 
@@ -221,6 +251,10 @@ input[type=color]::-webkit-color-swatch{border:0}
    than a squeezed column: at 320pt wide the label/value rows stop lining up
    and the sliders lose most of their travel. The detail view moves under the
    fit view, where it is still true scale.
+
+   The breakpoint is a literal because a media query cannot read a custom
+   property. It is the width below which --pane and --detail no longer both
+   fit beside a usable canvas.
 */
 
 .drawer-open,.drawer-close{display:none}
@@ -229,9 +263,9 @@ input[type=color]::-webkit-color-swatch{border:0}
   .shell{grid-template-columns:1fr}
 
   .pane{
-    position:fixed;inset:0 auto 0 0;z-index:2;width:min(88vw,340px);
-    background:var(--bg);border-right:1px solid var(--rule2);
-    transform:translateX(-100%);transition:transform .18s ease-out;
+    position:fixed;inset:0 auto 0 0;z-index:2;width:min(88vw,var(--drawer));
+    background:var(--bg);border-right:var(--hair) solid var(--rule2);
+    transform:translateX(-100%);transition:transform var(--slide) ease-out;
   }
   .shell[data-drawer=open] .pane{transform:none}
 
@@ -239,20 +273,21 @@ input[type=color]::-webkit-color-swatch{border:0}
   .drawer-open,.drawer-close{display:inline-block}
   .drawer-open{margin-right:auto}
 
-  .stage__head{gap:11px}
+  .stage__head{gap:var(--s2)}
   .stage__body{grid-template-columns:1fr;grid-template-rows:1fr auto}
-  .view{padding:11px}
+  .view{padding:var(--s2)}
 
   /* Label on its own line, then the crop beside its numbers. Three across
      leaves the readout too narrow and every label wraps. */
   .view--detail{
-    border-left:0;border-top:1px solid var(--rule);
-    flex-direction:row;flex-wrap:wrap;align-items:flex-start;gap:9px var(--gut)}
+    border-left:0;border-top:var(--hair) solid var(--rule);
+    flex-direction:row;flex-wrap:wrap;align-items:flex-start;
+    gap:var(--s1) var(--s3)}
   .view--detail .lbl{flex-basis:100%}
-  .view--detail canvas{width:118px;flex:none}
-  .view--detail .kv{flex:1;min-width:150px;margin-top:0}
+  .view--detail canvas{width:var(--crop);flex:none}
+  .view--detail .kv{flex:1;min-width:var(--kv-min);margin-top:0}
 
-  .stage__foot{flex-direction:column;align-items:flex-start;gap:4px}
-  .stats{flex-wrap:wrap;gap:11px}
+  .stage__foot{flex-direction:column;align-items:flex-start;gap:var(--s0)}
+  .stats{flex-wrap:wrap;gap:var(--s2)}
   #hint{display:none}
 }

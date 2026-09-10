@@ -27,11 +27,19 @@ def build() -> Path:
         shutil.rmtree(DIST)
     DIST.mkdir(parents=True)
 
-    for src in (ROOT / "web" / "app.css", ROOT / "web" / "app.js",
-                HERE / "shell.js", HERE / "worker.js"):
+    for src in (ROOT / "web" / "app.css", ROOT / "web" / "type.css",
+                ROOT / "web" / "app.js", HERE / "shell.js", HERE / "worker.js"):
         shutil.copyfile(src, DIST / src.name)
 
+    # type.css reaches the display face at fonts/, relative to itself.
+    fonts = DIST / "fonts"
+    fonts.mkdir()
+    for src in sorted((ROOT / "web" / "fonts").iterdir()):
+        if not src.name.startswith("._"):
+            shutil.copyfile(src, fonts / src.name)
+
     html = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
+    html = html.replace('href="/type.css"', 'href="type.css"')
     html = html.replace('href="/app.css"', 'href="app.css"')
     html = html.replace('src="/shell.js"', 'src="shell.js"')
     html = html.replace('src="/app.js"', 'src="app.js"')

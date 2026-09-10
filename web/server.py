@@ -109,7 +109,10 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if u.path in ("/", "/index.html"):
                 return self._static("index.html")
-            if u.path in ("/app.css", "/app.js", "/shell.js"):
+            if u.path in ("/app.css", "/type.css", "/app.js", "/shell.js"):
+                return self._static(u.path.lstrip("/"))
+            # type.css asks for the display face by relative url
+            if u.path.startswith("/fonts/") and "/" not in u.path[7:]:
                 return self._static(u.path.lstrip("/"))
 
             if u.path == "/api/init":
