@@ -281,7 +281,7 @@ def serve(port: int | None = None, open_window: bool = True):
     t.start()
     # flush: stdout is block-buffered when piped, and a launcher that
     # prints nothing until its buffer fills looks like a hang.
-    print(f"stipple — {url}", flush=True)
+    print(f"stipple: {url}", flush=True)
 
     if not open_window:
         try:

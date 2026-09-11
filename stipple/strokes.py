@@ -44,7 +44,6 @@ def _walk(x0, y0, dx0, dy0, step, steps, theta, geom, sign):
     """Integrate a streamline from each seed, midpoint method, in lockstep."""
     x, y = x0.copy(), y0.copy()
     rx, ry = sign * dx0, sign * dy0
-    mid_x = mid_y = None
 
     for k in range(steps):
         d1x, d1y = _align(*_dir_at(theta, x, y, geom), rx, ry)
@@ -53,12 +52,8 @@ def _walk(x0, y0, dx0, dy0, step, steps, theta, geom, sign):
         x = x + step * d2x
         y = y + step * d2y
         rx, ry = d2x, d2y
-        if k == steps // 2 - 1 or (steps == 1 and k == 0):
-            mid_x, mid_y = x.copy(), y.copy()
 
-    if mid_x is None:
-        mid_x, mid_y = x, y
-    return x, y, mid_x, mid_y
+    return x, y
 
 
 def build_strokes(
@@ -107,8 +102,8 @@ def build_strokes(
     half_len = 0.5 * np.maximum(dark, 0.0) * length_factor * local * noise
     step = half_len / max(steps, 1)
 
-    fx, fy, fmx, fmy = _walk(x0, y0, dx, dy, step, steps, theta, geom, +1.0)
-    bx, by, _, _ = _walk(x0, y0, dx, dy, step, steps, theta, geom, -1.0)
+    fx, fy = _walk(x0, y0, dx, dy, step, steps, theta, geom, +1.0)
+    bx, by = _walk(x0, y0, dx, dy, step, steps, theta, geom, -1.0)
 
     p0 = np.column_stack([bx, by])
     p2 = np.column_stack([fx, fy])

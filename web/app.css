@@ -1,4 +1,4 @@
-/* stipple — the site's type and colour, applied to a tool.
+/* stipple: the site's type and colour, applied to a tool.
    type.css holds the tokens and loads first; nothing below restates one.
    Redaction 35 for the display steps, Plantin (else Times) for everything
    else, including figures, per that file. Hairlines do all the separating:

@@ -274,7 +274,7 @@ function syncControls() {
     const p = document.getElementById('p_' + r.k);
     if (p) {
       const full = P[r.k] || '';
-      p.textContent = full ? full.split('/').pop() : '—';
+      p.textContent = full ? full.split('/').pop() : '-';
       p.title = full;                       // whole path on hover
     }
     document.querySelectorAll(`.cells button[data-k="${r.k}"]`).forEach(b => {
@@ -577,7 +577,7 @@ async function doExport() {
   status('exporting…', 'busy');
   try {
     const r = await SHELL.render(P);
-    status(`wrote ${r.name} — ${r.marks.toLocaleString()} marks, ${r.mb} MB, ${r.secs}s`);
+    status(`wrote ${r.name}: ${r.marks.toLocaleString()} marks, ${r.mb} MB, ${r.secs}s`);
   } catch (e) {
     status(String(e.message || e), 'err');
   } finally { b.disabled = false; }
